@@ -9,54 +9,64 @@ namespace Caesar_s_code
 {
     class CharacterFrequencyAnalyzer
     {
-        private SortedList<BigInteger, char> TopSample;
-        public CharacterFrequencyAnalyzer(StreamReader sample)
+        private SortedList<BigInteger, byte> TopSample;
+        public CharacterFrequencyAnalyzer(FileStream sample)
         {
-            Task<SortedList<BigInteger, char>> t = AnalyzeAsync(sample);
+            Task<SortedList<BigInteger, byte>> t = AnalyzeAsync(sample);
             t.Wait();
             TopSample = t.Result;
         }
 
-        private async Task<SortedList<BigInteger, char>> AnalyzeAsync(StreamReader sample)
+        private async Task<SortedList<BigInteger, byte>> AnalyzeAsync(FileStream sample)
         {
-            Dictionary<char, BigInteger> map = new Dictionary<char, BigInteger>();
-            Memory<char> buffer = new Memory<char>(new char[1024 * 1024 * 256]);
+            Dictionary<byte, BigInteger> map = new Dictionary<byte, BigInteger>();
+            Memory<byte> buffer = new Memory<byte>(new byte[1024 * 1024 * 256]);
             int i = 0;
             while ((i = await sample.ReadAsync(buffer)) > 0)
-                Parallel.For(i, 0, (int j) =>
+                Parallel.For(0, i, (int j) =>
                     map[buffer.Span[j]] = map.ContainsKey(buffer.Span[j]) ? map[buffer.Span[j]] + 1 : 1);
-            SortedList<BigInteger, char> output = new SortedList<BigInteger, char>(map.Count);
-            foreach(KeyValuePair<char, BigInteger> pair in map)
+            SortedList<BigInteger, byte> output = new SortedList<BigInteger, byte>(map.Count);
+            foreach(KeyValuePair<byte, BigInteger> pair in map)
             {
-                output.Add(pair.Value, pair.Key);
+                BigInteger key = pair.Value;
+                while (output.ContainsKey(key))
+                {
+                    key++;
+                }
+                output.Add(key, pair.Key);
             }
             return output;
         }
 
-        public void Decrypt(StreamWriter output, StreamReader input)
+        public void Decrypt(FileStream output, FileStream input)
         {
             Task.WaitAll(DecryptAsync(output, input));
         }
 
-        public async Task DecryptAsync(StreamWriter output, StreamReader input)
+        public async Task DecryptAsync(FileStream output, FileStream input)
         {
-            if (input.BaseStream.CanSeek == false)
+            if (input.CanSeek == false)
                 throw new Exception("Need Seek input.");
-            SortedList<BigInteger, char> currentSample = await AnalyzeAsync(input);
-            input.BaseStream.Position = 0;
+            SortedList<BigInteger, byte> currentSample = await AnalyzeAsync(input);
+            input.Position = 0;
             try
             {
-                Memory<char> buffer = new Memory<char>(new char[1]);
-                while (await input.ReadAsync(buffer) > 0)
+                byte[] buffer = new byte[1024 * 1024 * 256];
+                int i = 0;
+                while ((i = await input.ReadAsync(buffer)) > 0)
                 {
-                    await output.WriteAsync(GetDecryptChar(buffer.Span[0], currentSample));
+                    Parallel.For(0, i, (j) =>
+                    {
+                        buffer[j] = GetDecryptChar(buffer[j], currentSample);
+                    });
+                    await output.WriteAsync(buffer, 0, i);
                     await Console.Out.WriteAsync('.');
                 }
             }
             catch (Exception e) { await Console.Out.WriteLineAsync(e.Message); }
         }
 
-        private char GetDecryptChar(char v, SortedList<BigInteger, char> sample)
+        private byte GetDecryptChar(byte v, SortedList<BigInteger, byte> sample)
         {
             return TopSample[(BigInteger)((double)sample.IndexOfValue(v) / sample.Count * TopSample.Count)];
         }

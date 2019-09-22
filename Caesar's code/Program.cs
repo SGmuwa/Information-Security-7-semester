@@ -9,29 +9,34 @@ namespace Caesar_s_code
     {
         static void Main(string[] args)
         {
-            Run(args);
+            Run(args).Wait();
             Console.Out.WriteLineAsync("Нажмите на кнопку для завершения работы...");
             Console.ReadKey(true);
         }
 
-        static async void Run(string[] args)
+        static async Task Run(string[] args)
         {
-            FileStream w = null;
-            FileStream r = null;
-            try
-            {
-                using (r = GetFile("Что надо зашифровать? ").Open(FileMode.Open))
+            //try
+            //{
+                using (FileStream w = GetFile("Куда сохранить результат? ", true).Open(FileMode.Create))
                 {
-                    using (w = GetFile("Куда сохранить результат? ", true).Open(FileMode.Create))
+                    using (FileStream r = GetFile("Что надо зашифровать? ").Open(FileMode.Open))
                     {
                         await Encryption.EncryptAsync(w, r, GetKey("Ключ Цезаря: "));
                     }
+                    using (FileStream d = GetFile("Куда постараться расшифровать?").Open(FileMode.Create))
+                    {
+                        using (FileStream s = GetFile("Файл для сбора анализа частот: ").Open(FileMode.Open))
+                        {
+                            await new CharacterFrequencyAnalyzer(s).DecryptAsync(d, w);
+                        }
+                    }
                 }
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine(e.Message);
-            }
+            //}
+            //catch(Exception e)
+            //{
+            //    Console.WriteLine(e.Message);
+            //}
         }
 
 
