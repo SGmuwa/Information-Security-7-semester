@@ -24,6 +24,7 @@ namespace Caesar_s_code
                     {
                         await Encryption.EncryptAsync(w, r, GetKey("Ключ Цезаря: "));
                     }
+                    w.Position = 0;
                     using (FileStream d = GetFile("Куда постараться расшифровать?").Open(FileMode.Create))
                     {
                         using (FileStream s = GetFile("Файл для сбора анализа частот: ").Open(FileMode.Open))
