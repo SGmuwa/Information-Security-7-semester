@@ -16,15 +16,14 @@ namespace Caesar_s_code
 
         static async void Run(string[] args)
         {
-            StreamWriter w = null;
-            StreamReader r = null;
+            FileStream w = null;
+            FileStream r = null;
             try
             {
-                using (r = new StreamReader(GetFile("Что надо зашифровать? ").OpenRead()))
+                using (r = GetFile("Что надо зашифровать? ").Open(FileMode.Open))
                 {
-                    using (w = new StreamWriter(GetFile("Куда сохранить результат? ", true).OpenWrite()))
+                    using (w = GetFile("Куда сохранить результат? ", true).Open(FileMode.Create))
                     {
-                        w.BaseStream.SetLength(0);
                         await Encryption.EncryptAsync(w, r, GetKey("Ключ Цезаря: "));
                     }
                 }
@@ -45,10 +44,16 @@ namespace Caesar_s_code
                 try
                 {
                     f = new FileInfo(Console.ReadLine());
+                    if (!f.Exists)
+                    {
+                        f.Create().Dispose();
+                        f = new FileInfo(f.FullName);
+                    }
                 }
                 catch(Exception e) { Console.WriteLine(e.Message); continue; }
                 if (f.IsReadOnly && isNeedWrite) { Console.WriteLine("Нет доступа к файлу на запись."); continue; }
-            } while (false);
+                break;
+            } while (true);
             return f;
         }
 
