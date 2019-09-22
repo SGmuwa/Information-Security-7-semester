@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
@@ -19,30 +20,37 @@ namespace Caesar_s_code
 
         private async Task<SortedList<BigInteger, byte>> AnalyzeAsync(FileStream sample)
         {
-            Dictionary<byte, BigInteger> map = new Dictionary<byte, BigInteger>();
+            ConcurrentDictionary<byte, BigInteger> map = new ConcurrentDictionary<byte, BigInteger>();
             Memory<byte> buffer = new Memory<byte>(new byte[1024 * 1024 * 256]);
             int i = 0;
             while ((i = await sample.ReadAsync(buffer)) > 0)
                 Parallel.For(0, i, (int j) =>
-                    map[buffer.Span[j]] = map.ContainsKey(buffer.Span[j]) ? map[buffer.Span[j]] + 1 : 1);
+                {
+                    if (map.ContainsKey(buffer.Span[j]))
+                    {
+                        map[buffer.Span[j]]++;
+                    }
+                    else
+                    {
+                        map.TryAdd(buffer.Span[j], 1);
+                    }
+                });
             SortedList<BigInteger, List<byte>> output = new SortedList<BigInteger, List<byte>>(map.Count);
-            foreach(KeyValuePair<byte, BigInteger> pair in map)
+            foreach (KeyValuePair<byte, BigInteger> pair in map)
             {
-                var temp = output?[pair.Key];
-                if (temp == null)
+                if (!output.ContainsKey(pair.Value))
                 {
-                    temp = new List<byte>();
+                    output.Add(pair.Value, new List<byte>());
                 }
-                else
-                {
-                    temp.Add(pair.Key);
-                }
+                output[pair.Value].Add(pair.Key);
+
+
             }
             SortedList<BigInteger, byte> result = new SortedList<BigInteger, byte>();
             Random rand = new Random();
-            foreach(KeyValuePair<BigInteger, List<byte>> resultPair in output)
+            foreach (KeyValuePair<BigInteger, List<byte>> resultPair in output)
             {
-                result[resultPair.Key] = resultPair.Value[rand.Next(0, output.Values.Count - 1)];
+                result.Add(resultPair.Key,resultPair.Value[rand.Next(0, Math.Max(0, resultPair.Value.Count - 1))]);
             }
             return result;
         }
