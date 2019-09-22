@@ -25,17 +25,26 @@ namespace Caesar_s_code
             while ((i = await sample.ReadAsync(buffer)) > 0)
                 Parallel.For(0, i, (int j) =>
                     map[buffer.Span[j]] = map.ContainsKey(buffer.Span[j]) ? map[buffer.Span[j]] + 1 : 1);
-            SortedList<BigInteger, byte> output = new SortedList<BigInteger, byte>(map.Count);
+            SortedList<BigInteger, List<byte>> output = new SortedList<BigInteger, List<byte>>(map.Count);
             foreach(KeyValuePair<byte, BigInteger> pair in map)
             {
-                BigInteger key = pair.Value;
-                while (output.ContainsKey(key))
+                var temp = output?[pair.Key];
+                if (temp == null)
                 {
-                    key++;
+                    temp = new List<byte>();
                 }
-                output.Add(key, pair.Key);
+                else
+                {
+                    temp.Add(pair.Key);
+                }
             }
-            return output;
+            SortedList<BigInteger, byte> result = new SortedList<BigInteger, byte>();
+            Random rand = new Random();
+            foreach(KeyValuePair<BigInteger, List<byte>> resultPair in output)
+            {
+                result[resultPair.Key] = resultPair.Value[rand.Next(0, output.Values.Count - 1)];
+            }
+            return result;
         }
 
         public void Decrypt(FileStream output, FileStream input)
