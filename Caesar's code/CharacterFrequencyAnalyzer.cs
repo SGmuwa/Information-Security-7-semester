@@ -21,14 +21,17 @@ namespace Caesar_s_code
 
         private async Task<SortedList<BigInteger, byte>> AnalyzeAsync(FileStream sample)
         {
+            // костыли
             string path = sample.Name;
             sample.Flush();
             sample.Dispose();
+            
+            
+            // Query
             SortedList<BigInteger, byte> result = null;
             await Task.Run(() =>
             {
-                byte[] bytes = File.ReadAllBytes(sample.Name);
-                sample = new FileStream(path, FileMode.Open);
+                byte[] bytes = File.ReadAllBytes(sample.Name);  
                 var groups = bytes
                 .GroupBy(by => by)
                 .Select(n => new KeyValuePair<byte, BigInteger>(n.Key, n.Count()))
