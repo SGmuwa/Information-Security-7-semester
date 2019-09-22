@@ -68,7 +68,7 @@ namespace Caesar_s_code
 
         private byte GetDecryptChar(byte v, SortedList<BigInteger, byte> sample)
         {
-            return TopSample[(BigInteger)((double)sample.IndexOfValue(v) / sample.Count * TopSample.Count)];
+            return TopSample.Values[(int)((double)sample.IndexOfValue(v) / sample.Count * TopSample.Count)];
         }
     }
 }
