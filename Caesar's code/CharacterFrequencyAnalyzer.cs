@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
@@ -19,7 +20,7 @@ namespace Caesar_s_code
 
         private async Task<SortedList<BigInteger, byte>> AnalyzeAsync(FileStream sample)
         {
-            Dictionary<byte, BigInteger> map = new Dictionary<byte, BigInteger>();
+            ConcurrentDictionary<byte, BigInteger> map = new ConcurrentDictionary<byte, BigInteger>();
             Memory<byte> buffer = new Memory<byte>(new byte[1024 * 1024 * 256]);
             int i = 0;
             while ((i = await sample.ReadAsync(buffer)) > 0)
