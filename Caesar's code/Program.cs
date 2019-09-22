@@ -17,13 +17,14 @@ namespace Caesar_s_code
         static async Task Run(string[] args)
         {
             //try
-            //{
+            {
                 using (FileStream w = GetFile("Куда сохранить результат? ", true).Open(FileMode.Create))
                 {
                     using (FileStream r = GetFile("Что надо зашифровать? ").Open(FileMode.Open))
                     {
                         await Encryption.EncryptAsync(w, r, GetKey("Ключ Цезаря: "));
                     }
+                    await w.FlushAsync();
                     w.Position = 0;
                     using (FileStream d = GetFile("Куда постараться расшифровать?").Open(FileMode.Create))
                     {
@@ -33,7 +34,7 @@ namespace Caesar_s_code
                         }
                     }
                 }
-            //}
+            }
             //catch(Exception e)
             //{
             //    Console.WriteLine(e.Message);
@@ -49,7 +50,7 @@ namespace Caesar_s_code
                 Console.Write(message);
                 try
                 {
-                    f = new FileInfo(Console.ReadLine());
+                    f = new FileInfo(Console.ReadLine().Trim('"'));
                     if (!f.Exists)
                     {
                         f.Create().Dispose();
