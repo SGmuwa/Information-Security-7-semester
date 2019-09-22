@@ -63,15 +63,15 @@ namespace Caesar_s_code
             return f;
         }
 
-        static short GetKey(string message)
+        static byte GetKey(string message)
         {
             do
             {
                 Console.Write(message);
-                if (short.TryParse(Console.ReadLine(), out short key))
+                if (byte.TryParse(Console.ReadLine(), out byte key))
                     return key;
                 else
-                    Console.WriteLine($"Ошибка, попробуйте ещё раз от {short.MinValue} до {short.MaxValue}.");
+                    Console.WriteLine($"Ошибка, попробуйте ещё раз от {byte.MinValue} до {byte.MaxValue}.");
             } while (true);
         }
     }

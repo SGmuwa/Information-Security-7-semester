@@ -6,10 +6,10 @@ namespace Caesar_s_code
 {
     class Encryption
     {
-        public static void Encrypt(FileStream output, FileStream input, short key)
+        public static void Encrypt(FileStream output, FileStream input, byte key)
             => EncryptAsync(output, input, key).Wait();
 
-        public static async Task EncryptAsync(FileStream output, FileStream input, short key)
+        public static async Task EncryptAsync(FileStream output, FileStream input, byte key)
         {
             try
             {
