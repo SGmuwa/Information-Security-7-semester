@@ -24,6 +24,7 @@ namespace Caesar_s_code
                 {
                     using (w = new StreamWriter(GetFile("Куда сохранить результат? ", true).OpenWrite()))
                     {
+                        w.BaseStream.SetLength(0);
                         await Encryption.EncryptAsync(w, r, GetKey("Ключ Цезаря: "));
                     }
                 }

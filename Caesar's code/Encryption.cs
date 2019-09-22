@@ -6,20 +6,23 @@ namespace Caesar_s_code
 {
     class Encryption
     {
-        public static async Task EncryptAsync(StreamWriter output, StreamReader input, short key)
-        {
-            await Task.Run(() => Encrypt(output, input, key));
-        }
-
         public static void Encrypt(StreamWriter output, StreamReader input, short key)
+            => EncryptAsync(output, input, key).Wait();
+
+        public static async Task EncryptAsync(StreamWriter output, StreamReader input, short key)
         {
             try
             {
-                Span<char> buffer = new Span<char>(new char[1]);
-                while(input.Read(buffer) > 0)
+                char[] buffer = new char[1024 * 1024 * 256];
+                int i = 0;
+                while((i = await input.ReadAsync(buffer)) > 0)
                 {
-                    output.Write((char)(buffer[0] + key));
-                    Console.Out.WriteAsync('.');
+                    Parallel.For(0, i, (j) =>
+                    {
+                        buffer[j] = (char)(buffer[j] + key);
+                    });
+                    await output.WriteAsync(buffer, 0, i);
+                    await Console.Out.WriteAsync('.');
                 }
             }
             catch(Exception e) { Console.WriteLine(e.Message); }
