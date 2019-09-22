@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
@@ -26,6 +27,19 @@ namespace Caesar_s_code
             while ((i = await sample.ReadAsync(buffer)) > 0)
                 Parallel.For(0, i, (int j) =>
                     map[buffer.Span[j]] = map.ContainsKey(buffer.Span[j]) ? map[buffer.Span[j]] + 1 : 1);
+            BigInteger maxRepeat = SearchMaxReapeat(map.Values);
+            await Console.Out.WriteLineAsync("repeat: " + maxRepeat);
+            Parallel.ForEach(map, pair =>
+            {
+                Console.Out.WriteLineAsync($"{pair.Value : 0000000}:{pair.Key : 000}");
+            });
+            if (maxRepeat > 1)
+            {
+                Parallel.ForEach(map.Keys, key =>
+                {
+                    map[key] *= maxRepeat;
+                });
+            }
             SortedList<BigInteger, byte> output = new SortedList<BigInteger, byte>(map.Count);
             foreach(KeyValuePair<byte, BigInteger> pair in map)
             {
@@ -37,6 +51,21 @@ namespace Caesar_s_code
                 output.Add(key, pair.Key);
             }
             return output;
+        }
+
+        /// <summary>
+        /// Ищет повторяющиеся элементы. Возвращает максимальное количество повторов одного и того же элемента.
+        /// </summary>
+        /// <param name="values">Список, в котором надо искать повторяющиеся элементы.</param>
+        /// <returns>Максимальное количество повторов одного и того же элемента</returns>
+        private BigInteger SearchMaxReapeat<T>(ICollection<T> values)
+        {
+            Dictionary<T, BigInteger> d = new Dictionary<T, BigInteger>(values.Count);
+            foreach(T e in values)
+            {
+                d[e] = d.ContainsKey(e) ? d[e] + 1 : 1;
+            }
+            return d.Values.Max();
         }
 
         public void Decrypt(FileStream output, FileStream input)
