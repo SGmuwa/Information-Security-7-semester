@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,38 +21,23 @@ namespace Caesar_s_code
 
         private async Task<SortedList<BigInteger, byte>> AnalyzeAsync(FileStream sample)
         {
-            ConcurrentDictionary<byte, BigInteger> map = new ConcurrentDictionary<byte, BigInteger>();
-            Memory<byte> buffer = new Memory<byte>(new byte[1024 * 1024 * 256]);
-            int i = 0;
-            while ((i = await sample.ReadAsync(buffer)) > 0)
-                Parallel.For(0, i, (int j) =>
-                {
-                    if (map.ContainsKey(buffer.Span[j]))
-                    {
-                        map[buffer.Span[j]]++;
-                    }
-                    else
-                    {
-                        map.TryAdd(buffer.Span[j], 1);
-                    }
-                });
-            SortedList<BigInteger, List<byte>> output = new SortedList<BigInteger, List<byte>>(map.Count);
-            foreach (KeyValuePair<byte, BigInteger> pair in map)
+            string path = sample.Name;
+            sample.Flush();
+            sample.Dispose();
+            SortedList<BigInteger, byte> result = null;
+            await Task.Run(() =>
             {
-                if (!output.ContainsKey(pair.Value))
-                {
-                    output.Add(pair.Value, new List<byte>());
-                }
-                output[pair.Value].Add(pair.Key);
-
-
-            }
-            SortedList<BigInteger, byte> result = new SortedList<BigInteger, byte>();
-            Random rand = new Random();
-            foreach (KeyValuePair<BigInteger, List<byte>> resultPair in output)
-            {
-                result.Add(resultPair.Key,resultPair.Value[rand.Next(0, Math.Max(0, resultPair.Value.Count - 1))]);
-            }
+                byte[] bytes = File.ReadAllBytes(sample.Name);
+                sample = new FileStream(path, FileMode.Open);
+                var groups = bytes
+                .GroupBy(by => by)
+                .Select(n => new KeyValuePair<byte, BigInteger>(n.Key, n.Count()))
+                .GroupBy(by => by.Value)
+                .Select(n => new KeyValuePair<BigInteger, byte>(n.Key, n.First().Key))
+                .OrderBy(n => n.Value)
+                .ToDictionary(t => t.Key, t => t.Value);
+                result = new SortedList<BigInteger, byte>(groups);
+            });
             return result;
         }
 
