@@ -4,12 +4,12 @@ using System.Threading.Tasks;
 
 namespace Caesar_s_code
 {
-    class Encryption
+    public class Encryption
     {
-        public static void Encrypt(FileStream output, FileStream input, byte key)
+        public static void Encrypt(Stream output, Stream input, byte key)
             => EncryptAsync(output, input, key).Wait();
 
-        public static async Task EncryptAsync(FileStream output, FileStream input, byte key)
+        public static async Task EncryptAsync(Stream output, Stream input, byte key)
         {
             try
             {

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Caesar_s_code
 {
-    class CharacterFrequencyAnalyzer
+    public class CharacterFrequencyAnalyzer
     {
         private SortedList<BigInteger, byte> TopSample;
         public CharacterFrequencyAnalyzer(FileStream sample)
