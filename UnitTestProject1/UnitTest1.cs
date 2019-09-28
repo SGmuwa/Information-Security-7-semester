@@ -13,19 +13,19 @@ namespace UnitTestProject1
     public class UnitTest1
     {
         [DataTestMethod]
-        [DataRow("‡··", "·‚‚", 1)]
-        [DataRow("·‚‚", "‡··", -1)]
+        [DataRow("—Ä—Å—Å", "—Å—Ç—Ç", 1)]
+        [DataRow("—Å—Ç—Ç", "—Ä—Å—Å", -1)]
         public void Encrypt(string input, string expect, int key)
         {
             Assert.AreEqual(expect, Encryption.Encrypt(input, key));
         }
 
         [DataTestMethod]
-        [DataRow("‡··", 1, "‡··")]
-        [DataRow("·‚‚", -1, "·‚‚")]
-        [DataRow("‡··", 3, "‡··")]
-        [DataRow("‡··", 3, "‡‡···")]
-        [DataRow("ˇ··", 1, "‡‡···ˇ")]
+        [DataRow("—Ä—Å—Å", 1, "—Ä—Å—Å")]
+        [DataRow("—Å—Ç—Ç", -1, "—Å—Ç—Ç")]
+        [DataRow("—Ä—Å—Å", 3, "—Ä—Å—Å")]
+        [DataRow("—Ä—Å—Å", 3, "—Ä—Ä—Å—Å—Å")]
+        [DataRow("—ü—Å—Å", 1, "—Ä—Ä—Å—Å—Å—ü")]
         public void Decrypt(string expect, int key, string sample)
         {
             CharacterFrequencyAnalyzer an = new CharacterFrequencyAnalyzer(sample);
