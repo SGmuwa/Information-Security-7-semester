@@ -14,5 +14,17 @@ namespace UnitTestProject1
         [DataTestMethod]
         [DataRow(0)]
         public void MyTest2(int a) { }
+
+        [DataTestMethod]
+        [DataRow(MyNamespace2.MyEnum2.C)]
+        public void MyTest3(MyNamespace2.MyEnum2 a) { }
+    }
+}
+
+namespace MyNamespace2
+{
+    public enum MyEnum2
+    {
+        C = 0
     }
 }
