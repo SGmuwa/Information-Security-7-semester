@@ -4,35 +4,36 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Threading.Tasks;
+using static Caesar_s_code.LettersSupportProvider;
 
 namespace Caesar_s_code
 {
     public class CharacterFrequencyAnalyzer
     {
-        private SortedList<BigInteger, byte> TopSample;
-        public CharacterFrequencyAnalyzer(FileStream sample)
+        private SortedList<BigInteger, char> TopSample;
+
+        public CharacterFrequencyAnalyzer(string sample)
+            : this(sample.ConvertToStream()) { }
+
+        public CharacterFrequencyAnalyzer(StreamReader sample)
         {
-            Task<SortedList<BigInteger, byte>> t = AnalyzeAsync(sample);
+            Task<SortedList<BigInteger, char>> t = AnalyzeAsync(sample);
             t.Wait();
             TopSample = t.Result;
         }
 
-        private async Task<SortedList<BigInteger, byte>> AnalyzeAsync(FileStream sample)
+        private async Task<SortedList<BigInteger, char>> AnalyzeAsync(StreamReader sample)
         {
-            ConcurrentDictionary<byte, BigInteger> map = new ConcurrentDictionary<byte, BigInteger>();
-            Memory<byte> buffer = new Memory<byte>(new byte[1024 * 1024 * 256]);
+            ConcurrentDictionary<char, BigInteger> map = new ConcurrentDictionary<char, BigInteger>();
+            Memory<char> buffer = new Memory<char>(new char[1024 * 1024 * 256]);
             int i = 0;
             while ((i = await sample.ReadAsync(buffer)) > 0)
-                Parallel.For(0, i, (int j) =>
-                    map[buffer.Span[j]] = map.ContainsKey(buffer.Span[j]) ? map[buffer.Span[j]] + 1 : 1);
+                Parallel.For(0, i, (int j) => {
+                    if (LettersSupport.Contains(buffer.Span[j]))
+                        map[buffer.Span[j]] = map.ContainsKey(buffer.Span[j]) ? map[buffer.Span[j]] + 1 : 1;
+                    });
             BigInteger maxRepeat = SearchMaxReapeat(map.Values);
-            await Console.Out.WriteLineAsync("repeat: " + maxRepeat);
-            Parallel.ForEach(map, pair =>
-            {
-                Console.Out.WriteLineAsync($"{pair.Value : 0000000}:{pair.Key : 000}");
-            });
             if (maxRepeat > 1)
             {
                 Parallel.ForEach(map.Keys, key =>
@@ -40,8 +41,8 @@ namespace Caesar_s_code
                     map[key] *= maxRepeat;
                 });
             }
-            SortedList<BigInteger, byte> output = new SortedList<BigInteger, byte>(map.Count);
-            foreach(KeyValuePair<byte, BigInteger> pair in map)
+            SortedList<BigInteger, char> output = new SortedList<BigInteger, char>(map.Count);
+            foreach(KeyValuePair<char, BigInteger> pair in map)
             {
                 BigInteger key = pair.Value;
                 while (output.ContainsKey(key))
@@ -68,20 +69,28 @@ namespace Caesar_s_code
             return d.Values.Max();
         }
 
-        public void Decrypt(FileStream output, FileStream input)
+        public string Decrypt(string input)
+        {
+            StreamWriter ms = new StreamWriter(new MemoryStream());
+            Task.WaitAll(DecryptAsync(ms, input.ConvertToStream()));
+            return ms.ConvertStringAndClose();
+        }
+
+        public void Decrypt(StreamWriter output, StreamReader input)
         {
             Task.WaitAll(DecryptAsync(output, input));
         }
 
-        public async Task DecryptAsync(FileStream output, FileStream input)
+        public async Task DecryptAsync(StreamWriter output, StreamReader input)
         {
-            if (input.CanSeek == false)
-                throw new Exception("Need Seek input.");
-            SortedList<BigInteger, byte> currentSample = await AnalyzeAsync(input);
-            input.Position = 0;
+            if (input.BaseStream.CanSeek == false)
+                throw new IOException("Need Seek input.");
+            SortedList<BigInteger, char> currentSample = await AnalyzeAsync(input);
+            input.BaseStream.Position = 0;
+            input.DiscardBufferedData();
             try
             {
-                byte[] buffer = new byte[1024 * 1024 * 256];
+                char[] buffer = new char[1024 * 1024 * 256];
                 int i = 0;
                 while ((i = await input.ReadAsync(buffer)) > 0)
                 {
@@ -96,9 +105,11 @@ namespace Caesar_s_code
             catch (Exception e) { await Console.Out.WriteLineAsync(e.Message); }
         }
 
-        private byte GetDecryptChar(byte v, SortedList<BigInteger, byte> sample)
+        private char GetDecryptChar(char v, SortedList<BigInteger, char> sample)
         {
-            return TopSample.Values[(int)((double)sample.IndexOfValue(v) / sample.Count * TopSample.Count)];
+            if (LettersSupport.Contains(v))
+                return TopSample.Values[(int)((double)sample.IndexOfValue(v) / sample.Count * TopSample.Count)];
+            return v;
         }
     }
 }

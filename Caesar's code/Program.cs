@@ -18,19 +18,24 @@ namespace Caesar_s_code
         {
             //try
             {
-                using (FileStream w = GetFile("Куда сохранить результат? ", true).Open(FileMode.Create))
+                FileInfo toEncrypt = GetFile("Что надо зашифровать? ");
+                FileInfo toSave = GetFile("Куда сохранить результат? ", true);
+                using (StreamWriter w = new StreamWriter(toSave.FullName))
                 {
-                    using (FileStream r = GetFile("Что надо зашифровать? ").Open(FileMode.Open))
+                    using (StreamReader r = new StreamReader(toEncrypt.FullName))
                     {
                         await Encryption.EncryptAsync(w, r, GetKey("Ключ Цезаря: "));
                     }
-                    await w.FlushAsync();
-                    w.Position = 0;
-                    using (FileStream d = GetFile("Куда постараться расшифровать?").Open(FileMode.Create))
+                }
+                FileInfo toSample = GetFile("Файл для сбора анализа частот: ");
+                FileInfo toSaveDecrypt = GetFile("Куда постараться расшифровать?", true);
+                using (StreamReader dec = new StreamReader(toSave.FullName))
+                {
+                    using (StreamWriter sav = new StreamWriter(toSaveDecrypt.FullName))
                     {
-                        using (FileStream s = GetFile("Файл для сбора анализа частот: ").Open(FileMode.Open))
+                        using (StreamReader sam = new StreamReader(toSample.FullName))
                         {
-                            await new CharacterFrequencyAnalyzer(s).DecryptAsync(d, w);
+                            await new CharacterFrequencyAnalyzer(sam).DecryptAsync(sav, dec);
                         }
                     }
                 }
