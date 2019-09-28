@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using static Caesar_s_code.LettersSupportProvider.TypeLettersSupport;
-using static Caesar_s_code.LettersSupportProvider;
+using static MyNamespace.MyEnum;
+using MyNamespace;
 
 namespace UnitTestProject1
 {
@@ -8,10 +8,11 @@ namespace UnitTestProject1
     public class UnitTest1
     {
         [DataTestMethod]
-        [DataRow(russian)]
-        public void MyTest(TypeLettersSupport sup)
-        {
-            
-        }
+        [DataRow(first)]
+        public void MyTest1(MyEnum a) { }
+
+        [DataTestMethod]
+        [DataRow(0)]
+        public void MyTest2(int a) { }
     }
 }
