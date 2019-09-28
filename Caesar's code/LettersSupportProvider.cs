@@ -3,37 +3,60 @@ using System.Collections.ObjectModel;
 
 namespace Caesar_s_code
 {
-    static class LettersSupportProvider
+    public static class LettersSupportProvider
     {
-        static LettersSupportProvider()
-            => LettersSetSettings(false, false, false, false, true, false);
+        public enum TypeLettersSupport
+        {
+            numbers = 1,
+            english = numbers << 1,
+            englishBig = english << 1,
+            marks = englishBig << 1,
+            russian = marks << 1,
+            russianBig = russian << 1,
+            get_all = numbers | english | englishBig | marks | russian | russianBig
+        }
 
-        public static void LettersSetSettings(bool numbers, bool english, bool englishBig, bool marks, bool russian, bool russianBig)
+
+        static LettersSupportProvider()
+            => LettersSetSettings(TypeLettersSupport.get_all);
+
+        public static void LettersSetSettings(TypeLettersSupport set)
         {
             List<char> let = new List<char>();
-            if (russian)
+            if (set.HasFlag(TypeLettersSupport.russian))
             {
                 for (char c = 'а'; c <= 'я'; c++) let.Add(c);
                 let.Add('ё');
             }
-            if (russianBig)
+            if (set.HasFlag(TypeLettersSupport.russianBig))
             {
                 for (char c = 'А'; c <= 'Я'; c++) let.Add(c);
                 let.Add('Ё');
             }
-            if(numbers)
+            if(set.HasFlag(TypeLettersSupport.numbers))
                 for (char c = '0'; c <= '9'; c++) let.Add(c);
-            if(english)
+            if(set.HasFlag(TypeLettersSupport.english))
                 for (char c = 'a'; c <= 'z'; c++) let.Add(c);
-            if(englishBig)
+            if(set.HasFlag(TypeLettersSupport.englishBig))
                 for (char c = 'A'; c <= 'Z'; c++) let.Add(c);
-            if (marks)
+            if (set.HasFlag(TypeLettersSupport.marks))
             {
                 let.Add('.');
                 let.Add(',');
                 let.Add(';');
                 let.Add('?');
                 let.Add('!');
+                let.Add(':');
+                let.Add('"');
+                let.Add('\'');
+                let.Add('\\');
+                let.Add('/');
+                let.Add('(');
+                let.Add(')');
+                let.Add('[');
+                let.Add(']');
+                let.Add('{');
+                let.Add('}');
             }
             LettersSupport = new ReadOnlyCollection<char>(let);
         }

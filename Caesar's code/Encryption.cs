@@ -9,25 +9,9 @@ namespace Caesar_s_code
     {
         public static string Encrypt(string input, int key)
         {
-            using (StreamWriter inputStreamFirst = new StreamWriter(new MemoryStream()))
-            {
-                inputStreamFirst.Write(input);
-                inputStreamFirst.Flush();
-                inputStreamFirst.BaseStream.Position = 0;
-                using (StreamWriter outputStreamFirst = new StreamWriter(new MemoryStream()))
-                {
-                    using (StreamReader inputStreamSecond = new StreamReader(inputStreamFirst.BaseStream))
-                    {
-                        Encrypt(outputStreamFirst, inputStreamSecond, key);
-                        outputStreamFirst.Flush();
-                        outputStreamFirst.BaseStream.Position = 0;
-                        using (StreamReader outputStreamSecond = new StreamReader(outputStreamFirst.BaseStream))
-                        {
-                            return outputStreamSecond.ReadToEnd();
-                        }
-                    }
-                }
-            }
+            StreamWriter sw = new StreamWriter(new MemoryStream());
+            Encrypt(sw, input.ConvertToStream(), key);
+            return sw.ConvertStringAndClose();
         }
 
         public static void Encrypt(StreamWriter output, StreamReader input, int key)

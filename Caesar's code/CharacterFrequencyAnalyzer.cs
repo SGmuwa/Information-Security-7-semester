@@ -29,10 +29,11 @@ namespace Caesar_s_code
             Memory<char> buffer = new Memory<char>(new char[1024 * 1024 * 256]);
             int i = 0;
             while ((i = await sample.ReadAsync(buffer)) > 0)
-                Parallel.For(0, i, (int j) => {
+                for (int j = 0; j <= i; j++)
+                {
                     if (LettersSupport.Contains(buffer.Span[j]))
                         map[buffer.Span[j]] = map.ContainsKey(buffer.Span[j]) ? map[buffer.Span[j]] + 1 : 1;
-                    });
+                }
             BigInteger maxRepeat = SearchMaxReapeat(map.Values);
             if (maxRepeat > 1)
             {
@@ -66,13 +67,14 @@ namespace Caesar_s_code
             {
                 d[e] = d.ContainsKey(e) ? d[e] + 1 : 1;
             }
+            if (d.Count == 0) return 0;
             return d.Values.Max();
         }
 
         public string Decrypt(string input)
         {
             StreamWriter ms = new StreamWriter(new MemoryStream());
-            Task.WaitAll(DecryptAsync(ms, input.ConvertToStream()));
+            DecryptAsync(ms, input.ConvertToStream()).Wait();
             return ms.ConvertStringAndClose();
         }
 
@@ -99,7 +101,6 @@ namespace Caesar_s_code
                         buffer[j] = GetDecryptChar(buffer[j], currentSample);
                     });
                     await output.WriteAsync(buffer, 0, i);
-                    await Console.Out.WriteAsync('.');
                 }
             }
             catch (Exception e) { await Console.Out.WriteLineAsync(e.Message); }
@@ -108,7 +109,7 @@ namespace Caesar_s_code
         private char GetDecryptChar(char v, SortedList<BigInteger, char> sample)
         {
             if (LettersSupport.Contains(v))
-                return TopSample.Values[(int)((double)sample.IndexOfValue(v) / sample.Count * TopSample.Count)];
+                return TopSample.Values[(int)Math.Round((double)sample.IndexOfValue(v) / sample.Count * TopSample.Count)];
             return v;
         }
     }
