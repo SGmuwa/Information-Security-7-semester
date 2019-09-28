@@ -1,10 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <RootNamespace>Caesar_s_code</RootNamespace>
     <LangVersion>7.1</LangVersion>
+    <ApplicationIcon />
+    <StartupObject />
   </PropertyGroup>
 
 </Project>
