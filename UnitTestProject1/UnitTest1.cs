@@ -1,9 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Caesar_s_code;
-using System.IO;
 using System;
-using System.Text;
-using System.Linq;
 using static Caesar_s_code.LettersSupportProvider.TypeLettersSupport;
 using static Caesar_s_code.LettersSupportProvider;
 
@@ -13,19 +10,19 @@ namespace UnitTestProject1
     public class UnitTest1
     {
         [DataTestMethod]
-        [DataRow("рсс", "стт", 1)]
-        [DataRow("стт", "рсс", -1)]
+        [DataRow("абб", "бвв", 1)]
+        [DataRow("бвв", "абб", -1)]
         public void Encrypt(string input, string expect, int key)
         {
             Assert.AreEqual(expect, Encryption.Encrypt(input, key));
         }
 
         [DataTestMethod]
-        [DataRow("рсс", 1, "рсс")]
-        [DataRow("стт", -1, "стт")]
-        [DataRow("рсс", 3, "рсс")]
-        [DataRow("рсс", 3, "ррссс")]
-        [DataRow("џсс", 1, "ррсссџ")]
+        [DataRow("абб", 1, "абб")]
+        [DataRow("бвв", -1, "бвв")]
+        [DataRow("абб", 3, "абб")]
+        [DataRow("абб", 3, "ааббб")]
+        [DataRow("ябб", 1, "аабббя")]
         public void Decrypt(string expect, int key, string sample)
         {
             CharacterFrequencyAnalyzer an = new CharacterFrequencyAnalyzer(sample);
@@ -48,7 +45,7 @@ namespace UnitTestProject1
             {
                 if (i < dec.Length || i < expect.Length)
                 {
-                    if (LettersSupportProvider.LettersSupport.Contains(expect[i]))
+                    if (LettersSupport.Contains(expect[i]))
                     {
                         all++;
                         if (dec[i] != expect[i])
