@@ -18,6 +18,14 @@ namespace UnitTestProject1
         [DataTestMethod]
         [DataRow(MyNamespace2.MyEnum2.C)]
         public void MyTest3(MyNamespace2.MyEnum2 a) { }
+
+        [DataTestMethod]
+        [DataRow(ClassLibrary1.MyEnum2.ss)]
+        public void MyTest4(ClassLibrary1.MyEnum2 a) { }
+
+        [DataTestMethod]
+        [DataRow(Caesar_s_code_2.PKFpoekfw.ss)]
+        public void MyTest4(Caesar_s_code_2.PKFpoekfw a) { }
     }
 }
 
