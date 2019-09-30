@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Caesar's code", "Caesar's c
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestProject1", "UnitTestProject1\UnitTestProject1.csproj", "{3C0606D3-3A76-454B-A43E-B6B52D840F30}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Prime number generator", "Prime number generator\Prime number generator.csproj", "{ED36BFC4-183E-41BA-ABE2-8789EB9E2D6B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Prime number generator", "Prime number generator\Prime number generator.csproj", "{ED36BFC4-183E-41BA-ABE2-8789EB9E2D6B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -30,12 +30,13 @@ namespace UnitTestProject1
         }
 
         [DataTestMethod]
-        [DataRow("Vojna_i_mir__Tom_1_2_3_4", 21314, "Vojna_i_mir__Tom_1_2_3_4", 0.99, get_all)]
-        [DataRow("Vojna_i_mir__first_chapter", 413, "Vojna_i_mir__Tom_1_2_3_4", 0.29, get_all)]
-        [DataRow("Vojna_i_mir__first_chapter", -124, "Vojna_i_mir__Tom_1_2_3_4", 0.45, russian)]
-        public void DecryptFromResurses(string inputName, int key, string sampleName, double accuracy, TypeLettersSupport sup)
+        [DataRow("Vojna_i_mir__Tom_1_2_3_4", 21314, "Vojna_i_mir__Tom_1_2_3_4", 0.995, (int)get_all)]
+        [DataRow("Vojna_i_mir__first_chapter", 413, "Vojna_i_mir__Tom_1_2_3_4", 0.28, (int)get_all)]
+        [DataRow("Vojna_i_mir__first_chapter", -124, "Vojna_i_mir__Tom_1_2_3_4", 0.45, (int)russian)]
+        [DataRow("Vojna_i_mir__first_chapter", 32, "Vojna_i_mir__first_chapter", 0.993, (int)get_all)]
+        public void DecryptFromResurses(string inputName, int key, string sampleName, double accuracy, dynamic sup)
         {
-            LettersSetSettings(sup);
+            LettersSetSettings((TypeLettersSupport)sup);
             string expect = Properties.Resources.ResourceManager.GetString(inputName);
             string sample = Properties.Resources.ResourceManager.GetString(sampleName);
             CharacterFrequencyAnalyzer an = new CharacterFrequencyAnalyzer(sample);
