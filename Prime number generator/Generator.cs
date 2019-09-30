@@ -30,7 +30,7 @@ namespace Prime_number_generator
                 throw new ArgumentException("max должен быть равен как минимум двойке.");
             
             Dictionary<T, FlagType> output = new Dictionary<T, FlagType>();
-            dynamic current = (dynamic)default(T) + 1;
+            dynamic current = (T)((dynamic)default(T) + 1);
             while(true)
             {
                 current++;
@@ -41,7 +41,7 @@ namespace Prime_number_generator
                 if (output[current] == FlagType.Unknow)
                 {
                     output[current] = FlagType.Prime;
-                    for (dynamic i = current; i <= max; i += current)
+                    for (dynamic i = (T)(current + current); i <= max && i >= current; i = (T)(i + current))
                     {
                         output[i] = FlagType.NotPrime;
                     }
@@ -91,6 +91,29 @@ namespace Prime_number_generator
         private static bool MillerRabinPrimalityTest(BigInteger toTest)
         {
             throw new NotImplementedException();
+        }
+
+        private static BigInteger GetCountDivByTwo(BigInteger bigInteger)
+        {
+            if (bigInteger == 0)
+                return 0;
+            BigInteger output = 0;
+            while ((bigInteger & 0xFFFFFFFFFFFFFFFF) == 0)
+            {
+                output += 64;
+                bigInteger >>= 64;
+            }
+            while ((bigInteger & 0xFF) == 0)
+            {
+                output += 8;
+                bigInteger >>= 8;
+            }
+            while ((bigInteger & 0b1) == 0)
+            {
+                output++;
+                bigInteger >>= 1;
+            }
+            return output;
         }
     }
 }
