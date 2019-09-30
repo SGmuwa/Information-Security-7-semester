@@ -31,7 +31,7 @@ namespace Prime_number_generator
             
             Dictionary<T, FlagType> output = new Dictionary<T, FlagType>();
             dynamic current = (T)((dynamic)default(T) + 1);
-            while(true)
+            while (true)
             {
                 current++;
                 if (current > max)
@@ -46,8 +46,10 @@ namespace Prime_number_generator
                         output[i] = FlagType.NotPrime;
                     }
                 }
-                else if(output[current] == FlagType.NotPrime)
+                else if (output[current] == FlagType.NotPrime)
+                {
                     output.Remove(current);
+                }
             }
             return new List<T>(from n in output where n.Value == FlagType.Prime select n.Key);
         }
@@ -60,23 +62,6 @@ namespace Prime_number_generator
             ran.NextBytes(output);
             output[^1] >>= (byte)(countBits % 8);
             return new BigInteger(output);
-        }
-
-        public static BigInteger Pow(BigInteger a, BigInteger b)
-        {
-            BigInteger result = BigInteger.One;
-            do
-            {
-                int toPow = (int)(b & int.MaxValue);
-                b >>= sizeof(int) - 1;
-                if(b.Sign < 0)
-                {
-                    toPow = -toPow;
-                    b = -b;
-                }
-                result *= BigInteger.Pow(a, toPow);
-            } while (b > 1);
-            return result;
         }
 
         private static BigInteger GenerateRandom(BigInteger min, BigInteger max)
