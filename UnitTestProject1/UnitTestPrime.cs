@@ -1,12 +1,32 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using Prime_number_generator;
+using System.Numerics;
+using System;
+using System.Threading.Tasks;
 
 namespace UnitTestProject1
 {
     [TestClass]
     public class UnitTestPrime
     {
+        HashSet<BigInteger> primes;
+
+        [TestMethod]
+        public void AAA_Init()
+        {
+            primes = new HashSet<BigInteger>(Generator.GeneratePrimesSieveEratosthenes(BigInteger.Pow(2, 50) - 1));
+        }
+
+        [DataTestMethod]
+        [DataRow("2", "2", "4")]
+        [DataRow("4", "5", "1024")]
+        [DataRow("2", "8589934592" /*2^33*/, 1024)] 
+        public void Pow(string a, string b, string expect)
+        {
+            Assert.AreEqual(BigInteger.Parse(expect), Generator.Pow(BigInteger.Parse(a), BigInteger.Parse(b)));
+        }
+
         [TestMethod]
         public void GeneratePrimesSieveEratosthenesTest()
         {
@@ -15,6 +35,16 @@ namespace UnitTestProject1
             Assert.IsTrue(toBe.IsSubsetOf(Generator.primes));
             foreach (ushort n in notToBe)
                 CollectionAssert.DoesNotContain(Generator.primes, n);
+        }
+
+        [TestMethod]
+        public void GenerateRandomPrime()
+        {
+            Parallel.For(1, 10, (j) => {
+                BigInteger gen = Generator.GenerateRandomPrime(50);
+                Console.WriteLine(gen);
+                Assert.IsTrue(primes.Contains(gen));
+            });
         }
     }
 }

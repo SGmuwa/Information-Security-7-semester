@@ -23,7 +23,7 @@ namespace Prime_number_generator
         /// </summary>
         /// <param name="maximum">Граница поиска. Ожидается целое число.</param>
         /// <returns>Список простых чисел до max.</returns>
-        private static IList<T> GeneratePrimesSieveEratosthenes<T>(T maximum) where T : struct, IComparable
+        public static List<T> GeneratePrimesSieveEratosthenes<T>(T maximum) where T : struct, IComparable
         {
             dynamic max = maximum;
             if (max < 2)
@@ -46,6 +46,8 @@ namespace Prime_number_generator
                         output[i] = FlagType.NotPrime;
                     }
                 }
+                else if(output[current] == FlagType.NotPrime)
+                    output.Remove(current);
             }
             return new List<T>(from n in output where n.Value == FlagType.Prime select n.Key);
         }
@@ -57,17 +59,45 @@ namespace Prime_number_generator
             byte[] output = new byte[countBits / 8 + countBits % 8 == 0 ? 0 : 1];
             ran.NextBytes(output);
             output[^1] >>= (byte)(countBits % 8);
-            output[0] |= 1;
-            output[^1] |= (byte)(1 << (byte)(countBits % 8));
             return new BigInteger(output);
         }
 
-        public static BigInteger GenerateRandomPrime(ulong countBits)
+        public static BigInteger Pow(BigInteger a, BigInteger b)
         {
+            BigInteger result = BigInteger.One;
+            do
+            {
+                int toPow = (int)(b & int.MaxValue);
+                b >>= sizeof(int) - 1;
+                if(b.Sign < 0)
+                {
+                    toPow = -toPow;
+                    b = -b;
+                }
+                result *= BigInteger.Pow(a, toPow);
+            } while (b > 1);
+            return result;
+        }
+
+        private static BigInteger GenerateRandom(BigInteger min, BigInteger max)
+        {
+            if (min > max)
+                throw new ArgumentException();
+            BigInteger interval = max - min;
+            return (GenerateRandomBits((ulong)interval.ToByteArray().Length * 8) % interval) + min;
+        }
+
+
+        public static BigInteger GenerateRandomPrime(int countBits)
+        {
+            if (countBits < 2)
+                throw new ArgumentException();
             BigInteger output;
             do
             {
-                output = GenerateRandomBits(countBits);
+                output = GenerateRandomBits((uint)countBits);
+                output |= 1;
+                output |= BigInteger.One << (countBits - 1);
             } while (IsPrime(output));
             return output;
         }
@@ -88,16 +118,36 @@ namespace Prime_number_generator
             return result;
         }
 
-        private static bool MillerRabinPrimalityTest(BigInteger toTest)
+        private static bool MillerRabinPrimalityTest(BigInteger p)
         {
-            throw new NotImplementedException();
+            int b = (int)GetCountDivByTwo(p - 1);
+            int m = (int)((p - 1) / BigInteger.Pow(2, b));
+            BigInteger a = GenerateRandom(0, p - 1);
+            BigInteger j = 0;
+            BigInteger z = BigInteger.Pow(a, m) % p;
+            if (z == 1 || z == p - 1)
+                return true;
+            five:
+            if (j > 0 && z == 1)
+                return false; // Непростое.
+            j++;
+            if (j < b && z < p - 1)
+            {
+                z = z * z % p;
+                goto five;
+            }
+            else if (z == p - 1)
+                return true;
+            if (j == b && z != p - 1)
+                return false;
+            return true;
         }
 
-        private static BigInteger GetCountDivByTwo(BigInteger bigInteger)
+        private static uint GetCountDivByTwo(BigInteger bigInteger)
         {
             if (bigInteger == 0)
                 return 0;
-            BigInteger output = 0;
+            uint output = 0;
             while ((bigInteger & 0xFFFFFFFFFFFFFFFF) == 0)
             {
                 output += 64;
