@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace Prime_number_generator
 {
@@ -58,10 +59,10 @@ namespace Prime_number_generator
 
         private static BigInteger GenerateRandomBits(ulong countBits)
         {
-            byte[] output = new byte[countBits / 8 + countBits % 8 == 0 ? 0 : 1];
+            byte[] output = new byte[countBits / 8 + (countBits % 8 == 0 ? 0ul : 1ul)];
             ran.NextBytes(output);
             output[^1] >>= (byte)(countBits % 8);
-            return new BigInteger(output);
+            return new BigInteger(output, true);
         }
 
         private static BigInteger GenerateRandom(BigInteger min, BigInteger max)
@@ -83,11 +84,52 @@ namespace Prime_number_generator
                 output = GenerateRandomBits((uint)countBits);
                 output |= 1;
                 output |= BigInteger.One << (countBits - 1);
-            } while (IsPrime(output));
+            } while (!IsPrimePosible(output));
             return output;
         }
 
-        private static bool IsPrime(BigInteger output)
+        public static bool IsPrimeSlow(BigInteger input)
+        {
+            bool result = true;
+            CancellationTokenSource token = new CancellationTokenSource();
+            ParallelOptions option =
+                new ParallelOptions()
+                {
+                    CancellationToken = token.Token
+                };
+            try
+            {
+                Parallel.ForEach(GetterByTwice(input), option, (n) =>
+                {
+                    if (input % n == 0)
+                    {
+                        result = false;
+                        token.Cancel(false);
+                    }
+                });
+            }
+            catch (OperationCanceledException) { }
+            return result;
+
+            IEnumerable<BigInteger> GetterByTwice(BigInteger input)
+            {
+                input = input.Sqrt();
+                foreach (var n in Generator.primes)
+                {
+                    if (n > input)
+                        yield break;
+                    yield return n;
+                }
+                BigInteger last = new BigInteger(Generator.primes[^1]);
+                while (last < input)
+                {
+                    yield return last;
+                    last += 2;
+                }
+            }
+        }
+
+        private static bool IsPrimePosible(BigInteger output)
         {
             bool result = true; // true - простое. Иначе - false.
             Parallel.ForEach(primes, (n) =>
@@ -96,7 +138,7 @@ namespace Prime_number_generator
                     result = true;
             });
             if (!result) return false;
-            Parallel.For(1, 5, (i) => {
+            Parallel.For(0, 5, (i) => {
                 if (!MillerRabinPrimalityTest(output))
                     result = false;
             });
@@ -106,10 +148,10 @@ namespace Prime_number_generator
         private static bool MillerRabinPrimalityTest(BigInteger p)
         {
             int b = (int)GetCountDivByTwo(p - 1);
-            int m = (int)((p - 1) / BigInteger.Pow(2, b));
+            BigInteger m = (p - 1) / BigInteger.Pow(2, b);
             BigInteger a = GenerateRandom(0, p - 1);
             BigInteger j = 0;
-            BigInteger z = BigInteger.Pow(a, m) % p;
+            BigInteger z = BigInteger.ModPow(a, m, p); // a**m%p
             if (z == 1 || z == p - 1)
                 return true;
             five:

@@ -4,6 +4,8 @@ using Prime_number_generator;
 using System.Numerics;
 using System;
 using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Collections.Concurrent;
 
 namespace UnitTestProject1
 {
@@ -20,13 +22,31 @@ namespace UnitTestProject1
             foreach (ushort n in notToBe)
                 CollectionAssert.DoesNotContain(Generator.primes, n);
         }
-
-        [TestMethod]
-        public void GenerateRandomPrime()
+        
+        [DataTestMethod]
+        [DataRow("2", true)]
+        [DataRow("18446744073709551631", false)]
+        [DataRow("12413", true)]
+        [DataRow("12481327895728947123842214243252315453152141423", false)]
+        [DataRow("12478738739", true)]
+        public void IsPrimeSlow(string number, bool isPrime)
         {
-            Parallel.For(1, 10, (j) => {
-                BigInteger gen = Generator.GenerateRandomPrime(50);
-                Console.WriteLine(gen);
+            Assert.AreEqual(isPrime, Generator.IsPrimeSlow(BigInteger.Parse(number)));
+        }
+
+        [DataTestMethod]
+        [DataRow(20, 4)]
+        [DataRow(5, 50)]
+        [DataRow(2, 4096)]
+        public void GenerateRandomPrime(int countTry, int countBits)
+        {
+            Console.WriteLine("Проверьте на простые числа:");
+            Parallel.For(0, countTry, (j) => {
+                BigInteger gen = Generator.GenerateRandomPrime(countBits);
+                string url = $"https://www.wolframalpha.com/input/?i={gen}+is+prime";
+                Console.Out.WriteLineAsync($"{gen}: {url}");
+                //Process.Start("explorer.exe", $"\"{url}\"");
+                Assert.IsTrue(Generator.IsPrimeSlow(gen));
             });
         }
     }
