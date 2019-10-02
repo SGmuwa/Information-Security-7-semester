@@ -6,6 +6,7 @@ using System;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Collections.Concurrent;
+using System.Threading;
 
 namespace UnitTestProject1
 {
@@ -35,18 +36,23 @@ namespace UnitTestProject1
         }
 
         [DataTestMethod]
+        [DataRow(1, 4)]
         [DataRow(20, 4)]
         [DataRow(5, 50)]
-        [DataRow(2, 4096)]
+        [DataRow(1, 128)]
         public void GenerateRandomPrime(int countTry, int countBits)
         {
             Console.WriteLine("Проверьте на простые числа:");
-            Parallel.For(0, countTry, (j) => {
+            Parallel.For(0, countTry, (j) =>
+            {
                 BigInteger gen = Generator.GenerateRandomPrime(countBits);
+                Assert.AreEqual(countBits - 0.5, BigInteger.Log(gen, 2), 1);
                 string url = $"https://www.wolframalpha.com/input/?i={gen}+is+prime";
                 Console.Out.WriteLineAsync($"{gen}: {url}");
-                //Process.Start("explorer.exe", $"\"{url}\"");
-                Assert.IsTrue(Generator.IsPrimeSlow(gen));
+                using CancellationTokenSource tokenSource = new CancellationTokenSource();
+                tokenSource.CancelAfter(7000);
+                try { Assert.IsTrue(Generator.IsPrimeSlow(gen, tokenSource.Token)); }
+                catch (OperationCanceledException) { Process.Start("explorer.exe", $"\"{url}\""); }
             });
         }
     }

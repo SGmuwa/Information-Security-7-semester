@@ -55,13 +55,13 @@ namespace Prime_number_generator
             return new List<T>(from n in output where n.Value == FlagType.Prime select n.Key);
         }
 
-        private static Random ran = new Random();
+        private static readonly Random ran = new Random();
 
         private static BigInteger GenerateRandomBits(ulong countBits)
         {
             byte[] output = new byte[countBits / 8 + (countBits % 8 == 0 ? 0ul : 1ul)];
             ran.NextBytes(output);
-            output[^1] >>= (byte)(countBits % 8);
+            output[^1] >>= (byte)(8 - (countBits % 8));
             return new BigInteger(output, true);
         }
 
@@ -88,33 +88,35 @@ namespace Prime_number_generator
             return output;
         }
 
-        public static bool IsPrimeSlow(BigInteger input)
+        public static bool IsPrimeSlow(BigInteger input, CancellationToken mainToken = default)
         {
+            if (input < 2)
+                return false;
+            if (input < ulong.MaxValue)
+                return IsPrimeSlow((ulong)input, mainToken);
             bool result = true;
-            CancellationTokenSource token = new CancellationTokenSource();
-            ParallelOptions option =
-                new ParallelOptions()
-                {
-                    CancellationToken = token.Token
-                };
+            CancellationTokenSource miniTokenSource = new CancellationTokenSource();
             try
             {
-                Parallel.ForEach(GetterByTwice(input), option, (n) =>
+                Parallel.ForEach(GetterByTwice(input), new ParallelOptions() { CancellationToken = miniTokenSource.Token }, (n) =>
                 {
                     if (input % n == 0)
                     {
                         result = false;
-                        token.Cancel(false);
+                        miniTokenSource.Cancel();
                     }
+                    if(mainToken != default && mainToken.IsCancellationRequested)
+                        miniTokenSource.Cancel();
                 });
             }
             catch (OperationCanceledException) { }
+            mainToken.ThrowIfCancellationRequested();
             return result;
 
             IEnumerable<BigInteger> GetterByTwice(BigInteger input)
             {
                 input = input.Sqrt();
-                foreach (var n in Generator.primes)
+                foreach (var n in primes)
                 {
                     if (n > input)
                         yield break;
@@ -129,20 +131,65 @@ namespace Prime_number_generator
             }
         }
 
+        public static bool IsPrimeSlow(ulong input, CancellationToken mainToken = default)
+        {
+            if (input < 2)
+                return false;
+            bool result = true;
+            CancellationTokenSource miniTokenSource = new CancellationTokenSource();
+            try
+            {
+                Parallel.ForEach(GetterByTwice(input), new ParallelOptions() { CancellationToken = miniTokenSource.Token }, (n) =>
+                {
+                    if (input % n == 0)
+                    {
+                        result = false;
+                        miniTokenSource.Cancel();
+                    }
+                    if (mainToken != default && mainToken.IsCancellationRequested)
+                        miniTokenSource.Cancel();
+                });
+            }
+            catch (OperationCanceledException) { }
+            mainToken.ThrowIfCancellationRequested();
+            return result;
+
+            IEnumerable<ulong> GetterByTwice(ulong input)
+            {
+                input = (ulong)Math.Round(Math.Sqrt(input));
+                foreach (var n in primes)
+                {
+                    if (n > input)
+                        yield break;
+                    yield return n;
+                }
+                ulong last = primes[^1];
+                while (last < input)
+                {
+                    yield return last;
+                    last += 2;
+                }
+            }
+        }
+
         private static bool IsPrimePosible(BigInteger output)
         {
-            bool result = true; // true - простое. Иначе - false.
-            Parallel.ForEach(primes, (n) =>
+            using CancellationTokenSource tkSource = new CancellationTokenSource();
+            try
             {
-                if (output % n == 0)
-                    result = true;
-            });
-            if (!result) return false;
-            Parallel.For(0, 5, (i) => {
-                if (!MillerRabinPrimalityTest(output))
-                    result = false;
-            });
-            return result;
+                Parallel.ForEach(primes, (n) =>
+                {
+                    if (output % n == 0)
+                        tkSource.Cancel();
+                });
+                Parallel.For(0, 5, new ParallelOptions() { CancellationToken = tkSource.Token }, (i) =>
+                {
+                    if (!MillerRabinPrimalityTest(output))
+                        tkSource.Cancel();
+                });
+            }
+            catch (OperationCanceledException) { return false; }
+            return !tkSource.IsCancellationRequested;
         }
 
         private static bool MillerRabinPrimalityTest(BigInteger p)
