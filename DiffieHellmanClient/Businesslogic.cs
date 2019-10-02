@@ -1,23 +1,40 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Net;
+using System.Linq;
 
 namespace DiffieHellmanClient
 {
-    class Businesslogic
+    class Businesslogic : IDisposable
     {
-        private readonly ClientSocket socket;
+        private P2PClient Server = null;
 
-        public Businesslogic(ClientSocket socket)
+        private readonly Queue<dynamic> messages = new Queue<dynamic>();
+
+        public Businesslogic() { }
+
+        private void Socket_GetMessage(dynamic letter) => messages.Enqueue(letter);
+
+        public void InitServer(P2PClient thisServer)
         {
-            this.socket = socket;
-            this.socket.GetMessage += Socket_GetMessage;
-            this.socket.Send(new { message = "Hello" });
+            Server?.Dispose();
+            Server = thisServer;
         }
 
-        private void Socket_GetMessage(dynamic obj)
+        public void SendAll(string message)
         {
-            Console.WriteLine(obj.message);
+            foreach(P2PClient client in Server.Clients)
+            {
+                client.Send(new { message });
+            }
         }
+
+        public void Run() { }
+
+        public IEnumerable<dynamic> GetAllMessages() => from m in messages select m;
+
+        public void Dispose() => Server?.Dispose();
+
+        public void AddConection(IPEndPoint toConnect) => Server.AddConnection(toConnect);
     }
 }
