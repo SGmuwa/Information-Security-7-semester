@@ -3,14 +3,15 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Timers;
-using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Collections;
+using System.Text;
 
 namespace DiffieHellmanClient
 {
-    class P2PClient : IDisposable
+    class P2PClient : IDisposable, IEnumerable<TcpClient>, IEnumerable
     {
         private readonly HashSet<TcpClient> Clients = new HashSet<TcpClient>();
         private readonly TcpListener TcpListener;
@@ -19,7 +20,7 @@ namespace DiffieHellmanClient
         /// <summary>
         /// Происходит при получении сообщения от кого-либо.
         /// </summary>
-        public event Action<P2PClient, dynamic> GetMessage;
+        public event Action<P2PClient, TcpClient, Memory<byte>> OnMessageSend;
         /// <summary>
         /// Происходит при новом подключении.
         /// Вернуть нужно уникальный идентификатор.
@@ -50,7 +51,7 @@ namespace DiffieHellmanClient
 
         public void AddConnection(IPEndPoint toConnect)
         {
-            TcpClient client = new TcpClient(new IPEndPoint(IPAddress.Any, port));
+            TcpClient client = new TcpClient(TcpListener.Server.AddressFamily);
             client.Connect(toConnect);
             Clients.Add(client);
             OnConnection?.Invoke(this, client);
@@ -82,15 +83,15 @@ namespace DiffieHellmanClient
             RemoveOffline();
             foreach (TcpClient client in from c in Clients where c.Available > 0 select c)
             {
-                byte[] msg = new byte[client.Available];
-                client.GetStream().Read(msg, 0, msg.Length);
+                Memory<byte> msg = new Memory<byte>(new byte[client.Available]);
+                client.GetStream().Read(msg.Span);
                 try
                 {
-                    GetMessage?.Invoke(this, JsonConvert.DeserializeObject(System.Text.Encoding.UTF8.GetString(msg)));
+                    OnMessageSend?.Invoke(this, client, msg);
                 }
                 catch(Exception e)
                 {
-                    GetMessage?.Invoke(this, e);
+                    OnMessageSend?.Invoke(this, client, Encoding.UTF8.GetBytes(e.Message));
                 }
             }
         }
@@ -103,5 +104,9 @@ namespace DiffieHellmanClient
             foreach (TcpClient c in Clients)
                 c.Dispose();
         }
+
+        IEnumerator IEnumerable.GetEnumerator() => Clients.GetEnumerator();
+
+        public IEnumerator<TcpClient> GetEnumerator() => Clients.GetEnumerator();
     }
 }

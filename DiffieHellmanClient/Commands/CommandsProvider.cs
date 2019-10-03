@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Concurrent;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,14 +19,15 @@ namespace DiffieHellmanClient.Commands
             if (mySystem == null)
                 mySystem = new Businesslogic();
             this.mySystem = mySystem;
-            commands = new HashSet<AbstractCommand>()
+            commands = new ReadOnlyCollection<AbstractCommand>(new AbstractCommand[]
             {
                 new Help(this),
                 new Exit(this),
                 new SetLocalPort(this),
                 new SendAll(this),
-                new AddConection(this)
-            };
+                new AddConection(this),
+                new ReadAllMessages(this)
+            });
         }
 
         public void Start()
@@ -34,10 +37,21 @@ namespace DiffieHellmanClient.Commands
             while (!IsNeedStop)
             {
                 history.Add(GetterText());
-                InvokeText(history.Last.Value);
+                try
+                {
+                    InvokeText(history.Last.Value);
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine($"{e.Message}\nРекомендуется завершить работу программы.");
+                }
             }
             mySystem.Dispose();
         }
+
+        private readonly ConcurrentQueue<string> toPrint = new ConcurrentQueue<string>();
+
+        public void Print(string msg) => toPrint.Enqueue(msg);
 
         private string GetterText()
         {
@@ -45,6 +59,7 @@ namespace DiffieHellmanClient.Commands
             ConsoleKeyInfo info;
             var posStart = new { X = Console.CursorLeft, Y = Console.CursorTop };
             StringBuilder buffer = null;
+            buffer = ShowUserCommandText(sb, posStart, buffer);
             do
             {
                 info = Console.ReadKey(true);
@@ -61,6 +76,8 @@ namespace DiffieHellmanClient.Commands
                     sb.Append(info.KeyChar);
                 buffer = ShowUserCommandText(sb, posStart, buffer);
             } while (info.Key != ConsoleKey.Enter);
+            Console.SetCursorPosition(posStart.X, posStart.Y);
+            Console.Write(buffer.ToString());
             if (GetCommandAndArgsFromText(sb.ToString(), out string commandName, out string[] args))
             {
                 List<AbstractCommand> recommendCommands = SearchRecommendations.Search(commandName, (t) => t.Name, commands);
@@ -70,13 +87,13 @@ namespace DiffieHellmanClient.Commands
             return sb.ToString();
         }
 
-        private StringBuilder ShowUserCommandText(StringBuilder sb, dynamic posStart, StringBuilder stringOld)
+        private StringBuilder ShowUserCommandText(StringBuilder toInsert, dynamic posStart, StringBuilder stringOld)
         {
-            string sbString = sb.ToString();
+            string sbString = toInsert.ToString();
             StringBuilder output = new StringBuilder("> ");
             output.Append(sbString);
             output.AppendLine();
-            if (GetCommandAndArgsFromText(sbString, out string commandName, out string[] args))
+            if (GetCommandAndArgsFromText(sbString, out string commandName, out _))
             {
                 output.Append(GetRecommendedInfo(commandName));
                 output.AppendLine();
@@ -92,6 +109,7 @@ namespace DiffieHellmanClient.Commands
             }
             Console.SetCursorPosition(posStart.X, posStart.Y);
             Console.Write(stringNew.ToString());
+            Console.SetCursorPosition((posStart.X + sbString.Length + 2) % Console.BufferWidth, (posStart.X + sbString.Length + 2) / Console.BufferWidth + posStart.Y);
             return stringNew;
         }
 
@@ -151,7 +169,7 @@ namespace DiffieHellmanClient.Commands
 
         public bool IsNeedStop { get; set; } = true;
 
-        private readonly HashSet<AbstractCommand> commands;
+        private readonly ReadOnlyCollection<AbstractCommand> commands;
 
         public IEnumerator<AbstractCommand> GetEnumerator()
             => commands.GetEnumerator();

@@ -23,10 +23,11 @@ namespace DiffieHellmanClient.Commands
                 Console.WriteLine($"Требуется как минимум 1 аргумент с целым значением от {IPEndPoint.MinPort} до {IPEndPoint.MaxPort}.");
                 return;
             }
-            if(int.TryParse(args[0], out int result))
+            if(ushort.TryParse(args[0], out ushort result))
             {
                 if (IPEndPoint.MinPort <= result && result <= IPEndPoint.MaxPort)
                 {
+                    provider.mySystem.Dispose();
                     provider.mySystem.InitServer(new P2PClient(result));
                     return;
                 }
