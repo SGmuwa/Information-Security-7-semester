@@ -11,6 +11,7 @@ namespace DiffieHellmanClient
     class Businesslogic : IDisposable
     {
         private P2PClient Server = null;
+        private readonly ICrypter crypter = new Crypter();
 
         private readonly Stack<dynamic> messages = new Stack<dynamic>();
         /// <summary>
@@ -25,20 +26,36 @@ namespace DiffieHellmanClient
             Server?.Dispose();
             Server = thisServer;
             Server.OnMessageSend += p_OnMessageSend;
+            Server.OnConnection += p_OnConnection;
+        }
+
+        private void p_OnConnection(P2PClient server, TcpClient client)
+        {
+            crypter.AddUser(client);
         }
 
         private void p_OnMessageSend(P2PClient sender, TcpClient client, Memory<byte> msg)
         {
-            dynamic json = JsonConvert.DeserializeObject(Encoding.UTF8.GetString(msg.Span));
-            messages.Push(new { TimeGet = DateTime.Now, Client = client, Json = json });
-            OnMessageSend?.Invoke(sender, client, messages.Peek());
+            if (crypter.IsConnectionSafe)
+            {
+                msg = crypter.Decrypt(msg);
+                dynamic json = JsonConvert.DeserializeObject(Encoding.UTF8.GetString(msg.Span));
+                messages.Push(new { TimeGet = DateTime.Now, Client = client, Json = json });
+                OnMessageSend?.Invoke(sender, client, messages.Peek());
+            }
         }
 
-        public void SendAll(string message)
+        public void Send(TcpClient client, dynamic msg)
         {
-            foreach(TcpClient client in Server)
-                client.GetStream().Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(
-                    new { Type = "msg", Message = message })));
+            Memory<byte> info = new Memory<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(msg)));
+            info = crypter.Encrypt(info);
+            client.GetStream().Write(info.Span);
+        }
+
+        public void SendAll(dynamic msg)
+        {
+            foreach (TcpClient client in Server)
+                Send(client, msg);
         }
 
         public void Run() { }

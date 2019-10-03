@@ -65,7 +65,7 @@ namespace Prime_number_generator
             return new BigInteger(output, true);
         }
 
-        private static BigInteger GenerateRandom(BigInteger min, BigInteger max)
+        public static BigInteger GenerateRandom(BigInteger min, BigInteger max)
         {
             if (min > max)
                 throw new ArgumentException();
