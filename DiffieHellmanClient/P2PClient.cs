@@ -6,6 +6,7 @@ using System.Timers;
 using System.IO;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Linq;
 
@@ -13,10 +14,14 @@ namespace DiffieHellmanClient
 {
     class P2PClient : IDisposable
     {
-        private readonly List<P2PClient> Clients = new List<P2PClient>();
+        private readonly HashSet<P2PClient> Clients = new HashSet<P2PClient>();
         private TcpListener TcpListener;
+        /// <summary>
+        /// Используется для удалённых клиентов.
+        /// </summary>
+        private TcpClient remoteClient;
 
-        private readonly Task taskConnect;
+        private readonly Task taskRemover;
         private StreamReader sr;
         private StreamWriter sw;
         private readonly System.Timers.Timer timer = new System.Timers.Timer(20);
@@ -31,16 +36,17 @@ namespace DiffieHellmanClient
         /// <param name="port">Порт, который будет прослушиваться и из которого будут идти пакеты.</param>
         public P2PClient(ushort port)
         {
+            TcpListener.Start();
             timer.Elapsed += TimerListner;
             this.port = port;
-            taskConnect = Task.Run(ConnectAll);
+            taskRemover = Task.Run(RemoveOffline);
             timer.Start();
         }
 
-        private P2PClient(IPEndPoint to)
-        {
-            this.to = to;
-        }
+        /// <summary>
+        /// Создать виртуальный (удалённый) P2P клиент.
+        /// </summary>
+        private P2PClient(TcpClient remoteClient) { this.remoteClient = remoteClient; }
 
         public bool IsLive => timer.Enabled;
 
@@ -49,18 +55,19 @@ namespace DiffieHellmanClient
             throw new NotImplementedException();
         }
 
-        private void ConnectAll()
+        private void RemoveOffline()
         {
-            while (timer.Enabled)
+            HashSet<P2PClient> toRemove = new HashSet<P2PClient>(from client in Clients where !client.IsLive select client);
+            foreach (P2PClient client in toRemove)
             {
-                HashSet<Socket> toRemove = new HashSet<Socket>(from Socket client in Clients where !client.Connected select client);
-                foreach(Socket client in toRemove)
-                {
-                    Clients.Remove(client);
-                    client.Dispose();
-                }
-                Clients.Add(server.Accept());
+                Clients.Remove(client);
+                client.Dispose();
             }
+        }
+
+        private async void AcceptConnections(TcpListener TcpListener)
+        {
+            Clients.Add(new P2PClient(await TcpListener.AcceptTcpClientAsync());
         }
 
 
