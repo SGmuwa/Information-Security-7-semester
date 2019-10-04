@@ -32,7 +32,7 @@ namespace DiffieHellmanClient.Commands
             }
         }
 
-        private void OnMessageSend(P2PClient server, TcpClient client, dynamic message)
+        private void OnMessageSend(Businesslogic server, TcpClient client, dynamic message)
             => Console.WriteLine(MsgToString(message));
 
         private string MsgToString(dynamic msg)

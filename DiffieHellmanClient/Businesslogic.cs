@@ -8,16 +8,16 @@ using System.Text;
 
 namespace DiffieHellmanClient
 {
-    class Businesslogic : IDisposable
+    public class Businesslogic : IDisposable
     {
         private P2PClient Server = null;
         private ICrypter crypter;
 
-        private readonly Stack<dynamic> messages = new Stack<dynamic>();
+        private readonly Stack<PackageInfo> messages = new Stack<PackageInfo>();
         /// <summary>
         /// Происходит при получении сообщения от кого-либо.
         /// </summary>
-        public event Action<P2PClient, TcpClient, dynamic> OnMessageSend;
+        public event Action<Businesslogic, TcpClient, dynamic> OnMessageSend;
 
         public Businesslogic() { }
 
@@ -41,8 +41,8 @@ namespace DiffieHellmanClient
             {
                 msg = crypter.Decrypt(client, msg);
                 dynamic json = JsonConvert.DeserializeObject(Encoding.UTF8.GetString(msg.Span));
-                messages.Push(new { TimeGet = DateTime.Now, Client = client, Json = json });
-                OnMessageSend?.Invoke(sender, client, messages.Peek());
+                messages.Push(new PackageInfo(json, client));
+                OnMessageSend?.Invoke(this, client, messages.Peek());
             }
         }
 
@@ -61,9 +61,9 @@ namespace DiffieHellmanClient
 
         public void Run() { }
 
-        public IEnumerable<dynamic> GetAllMessages() => from m in messages select m;
+        public IEnumerable<PackageInfo> GetAllMessages() => from m in messages select m;
 
-        public void AddConection(IPEndPoint toConnect) => Server.AddConnection(toConnect);
+        public TcpClient AddConection(IPEndPoint toConnect) => Server.AddConnection(toConnect);
 
         public void Dispose()
         {
