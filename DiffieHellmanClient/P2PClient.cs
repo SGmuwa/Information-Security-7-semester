@@ -11,7 +11,7 @@ using System.Text;
 
 namespace DiffieHellmanClient
 {
-    class P2PClient : IDisposable, IEnumerable<TcpClient>, IEnumerable
+    public class P2PClient : IDisposable, IEnumerable<TcpClient>, IEnumerable
     {
         private readonly HashSet<TcpClient> Clients = new HashSet<TcpClient>();
         private readonly TcpListener TcpListener;
@@ -29,7 +29,7 @@ namespace DiffieHellmanClient
         /// <summary>
         /// Происходит при обрыве подключения.
         /// </summary>
-        public event Action<P2PClient, TcpClient> OnDisconnection;
+        public event Action<P2PClient, TcpClient> OnDisconnect;
 
         private readonly ushort port;
 
@@ -63,7 +63,7 @@ namespace DiffieHellmanClient
             foreach (TcpClient client in toRemove)
             {
                 Clients.Remove(client);
-                OnDisconnection?.Invoke(this, client);
+                OnDisconnect?.Invoke(this, client);
                 client.Dispose();
             }
         }

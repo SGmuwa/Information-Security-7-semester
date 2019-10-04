@@ -3,26 +3,83 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Numerics;
+using System.Threading.Tasks;
 using Prime_number_generator;
 
 namespace DiffieHellmanClient
 {
     public class Crypter : ICrypter
     {
+        private readonly P2PClient server;
+
+        public Crypter(P2PClient server)
+        {
+            this.server = server;
+            server.OnDisconnect += OnClientDisconnect;
+        }
+
+        ~Crypter()
+        {
+            if (server != null)
+                server.OnDisconnect -= OnClientDisconnect;
+        }
+
+        /// <summary>
+        /// Генератор случайных чисел.
+        /// </summary>
         private Random ran = new Random();
 
-        private ConcurrentDictionary<TcpClient, dynamic> users = new ConcurrentDictionary<TcpClient, dynamic>();
+        /// <summary>
+        /// База данных пользователей и их ключей шифрования.
+        /// </summary>
+        private readonly ConcurrentDictionary<TcpClient, Memory<byte>> users = new ConcurrentDictionary<TcpClient, Memory<byte>>();
 
         public void AddUser(TcpClient client)
         {
-            BigInteger a = Generator.GenerateRandomPrime(256);
-            BigInteger p = Generator.GenerateRandomPrime(1024);
-            BigInteger g = AntiderivativeRootModulo(p);
-            client.GetStream().Write();
+            // Договариваемся, кто генерирует p и g.
+            byte arrangement;
+            Memory<byte> buffer;
+            BigInteger a;
+            Task<BigInteger> a_task = Task.Run(() => Generator.GenerateRandomPrime(256));
+            do {
+                arrangement = (byte)ran.Next(0, 255); // Договорённость.
+                buffer = new Memory<byte>(new byte[2]);
+                client.GetStream().Write(new byte[] { arrangement });
+                if (client.GetStream().Read(buffer.Span) > 1)
+                    throw new Exception("Не совпадает протокол. " + string.Join(", ", buffer));
+            } while (arrangement == buffer.Span[0]);
+            BigInteger p;
+            BigInteger g;
+            if (arrangement > buffer.Span[0])
+            {
+                p = Generator.GenerateRandomPrime(1024);
+                g = AntiderivativeRootModulo(p);
+            }
+            else
+            {
+                buffer = new Memory<byte>(new byte[1024 / 8]);
+                if(client.GetStream().Read(buffer.Span) != 1024 / 8)
+                    throw new Exception("Не совпадает протокол. " + string.Join(", ", buffer));
+                p = new BigInteger(buffer.ToArray());
+                int size = client.GetStream().Read(buffer.Span);
+                g = new BigInteger(buffer.Span.Slice(0, size).ToArray());
+            }
+            a_task.Wait();
+            a = a_task.Result;
+            BigInteger A = BigInteger.ModPow(g, a, p);
+            byte[] A_array = A.ToByteArray();
+            client.GetStream().Write(A_array, 0, A_array.Length);
+            byte[] B_array = new byte[A_array.Length * 2];
+            Span<byte> B_span = new Span<byte>(B_array).Slice(0, client.GetStream().Read(B_array));
+            BigInteger B = new BigInteger(B_span.ToArray());
+            BigInteger K = BigInteger.ModPow(B, a, p);
+            users[client] = new Memory<byte>(K.ToByteArray());
         }
 
         public Memory<byte> Decrypt(TcpClient client, Memory<byte> msg)
         {
+            if (!users.ContainsKey(client))
+                throw new Exception("Connection not safe.");
             throw new NotImplementedException();
         }
 
@@ -32,9 +89,11 @@ namespace DiffieHellmanClient
         }
 
         public bool IsConnectionSafe(TcpClient client)
-        {
-            throw new NotImplementedException();
-        }
+            => users.ContainsKey(client);
+
+        private void OnClientDisconnect(P2PClient server, TcpClient client)
+            => users.TryRemove(client, out _);
+
 
         /// <summary>
         /// Ищет первообразный корень по модулю.
