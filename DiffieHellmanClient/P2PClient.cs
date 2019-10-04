@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using System.Collections;
 using System.Text;
+using System.IO;
 
 namespace DiffieHellmanClient
 {
@@ -17,6 +18,19 @@ namespace DiffieHellmanClient
         private readonly TcpListener TcpListener;
 
         private readonly System.Timers.Timer timer = new System.Timers.Timer(20);
+        private readonly CancellationTokenSource CancelTokenSrc;
+        private TimeSpan timeout = TimeSpan.FromSeconds(20);
+
+        public TimeSpan Timeout
+        {
+            get => timeout; set
+            {
+                if (timeout > TimeSpan.Zero)
+                    timeout = value;
+                else
+                    throw new ArgumentException("Вы не можете ждать ноль или менее времени!");
+            }
+        }
         /// <summary>
         /// Происходит при получении сообщения от кого-либо.
         /// </summary>
@@ -31,19 +45,17 @@ namespace DiffieHellmanClient
         /// </summary>
         public event Action<P2PClient, TcpClient> OnDisconnect;
 
-        private readonly ushort port;
-
         /// <summary>
         /// Создать точку приёма пакетов.
         /// </summary>
         /// <param name="port">Порт, который будет прослушиваться и из которого будут идти пакеты.</param>
         public P2PClient(ushort port)
         {
+            CancelTokenSrc = new CancellationTokenSource(timeout);
             TcpListener = new TcpListener(IPAddress.Any, port);
             TcpListener.Start();
             timer.Elapsed += TimerListner;
             Task.Run(AcceptConnections);
-            this.port = port;
             timer.Start();
         }
 
@@ -56,6 +68,45 @@ namespace DiffieHellmanClient
             Clients.Add(client);
             OnConnection?.Invoke(this, client);
             return client;
+        }
+
+        /// <summary>
+        /// Отправляет массив данных клиенту.
+        /// </summary>
+        /// <param name="client">Пользователь, которому надо отправить пакет.</param>
+        /// <param name="toWrite">Данные, которые надо отправить.</param>
+        public void Write(TcpClient client, Memory<byte> toWrite)
+        {
+            using var str = new MemoryStream();
+            str.Write(BitConverter.GetBytes(toWrite.Length), 0, sizeof(int));
+            str.Write(toWrite.Span);
+            client.GetStream().WriteAsync(str.ToArray(), CancelTokenSrc.Token).AsTask().Wait();
+        }
+
+        /// <summary>
+        /// Забирает один пакет с клиента.
+        /// </summary>
+        /// <param name="client">Клиент, от которого надо получить пакет.</param>
+        /// <returns>Пакет данных от клиента.</returns>
+        public Memory<byte> Read(TcpClient client)
+        {
+            Memory<byte> buffer = new byte[sizeof(int)];
+            client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
+            int Length = BitConverter.ToInt32(buffer.Span);
+            buffer = new byte[Length];
+            client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
+            return buffer;
+        }
+
+        public IEnumerator<TcpClient> GetEnumerator() => Clients.GetEnumerator();
+
+        public void Dispose()
+        {
+            TcpListener.Stop();
+            timer.Dispose();
+            foreach (TcpClient c in Clients)
+                c.Dispose();
+            CancelTokenSrc.Dispose();
         }
 
         private void RemoveOffline()
@@ -76,7 +127,8 @@ namespace DiffieHellmanClient
                 {
                     TcpClient @new = TcpListener.AcceptTcpClient();
                     Clients.Add(@new);
-         /*try { */ OnConnection?.Invoke(this, @new); /*}
+                    /*try { */
+                    OnConnection?.Invoke(this, @new); /*}
                     catch (Exception e) { Console.WriteLine(e.Message); } */
                 }
                 else
@@ -89,30 +141,18 @@ namespace DiffieHellmanClient
             RemoveOffline();
             foreach (TcpClient client in from c in Clients where c.Available > 0 select c)
             {
-                Memory<byte> msg = new Memory<byte>(new byte[client.Available]);
-                client.GetStream().Read(msg.Span);
+                Memory<byte> msg = Read(client);
                 try
                 {
                     OnMessageSend?.Invoke(this, client, msg);
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     OnMessageSend?.Invoke(this, client, Encoding.UTF8.GetBytes(e.Message));
                 }
             }
         }
 
-
-        public void Dispose()
-        {
-            TcpListener.Stop();
-            timer.Dispose();
-            foreach (TcpClient c in Clients)
-                c.Dispose();
-        }
-
         IEnumerator IEnumerable.GetEnumerator() => Clients.GetEnumerator();
-
-        public IEnumerator<TcpClient> GetEnumerator() => Clients.GetEnumerator();
     }
 }

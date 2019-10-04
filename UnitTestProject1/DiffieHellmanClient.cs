@@ -10,7 +10,7 @@ using System.Net.Sockets;
 namespace UnitTestProject1
 {
     [TestClass]
-    class DiffieHellmanClient
+    public class DiffieHellmanClient
     {
         [TestMethod]
         public void Test1()

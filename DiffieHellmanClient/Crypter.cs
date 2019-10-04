@@ -13,7 +13,9 @@ namespace DiffieHellmanClient
     {
         private readonly P2PClient server;
 
-        private static readonly TimeSpan timeout = TimeSpan.FromSeconds(200);
+        private static readonly TimeSpan timeout = TimeSpan.FromMinutes(30);
+
+        private const ushort COUNT_PRIME_BITS = 50; // Рекомендуется 1024
 
         public Crypter(P2PClient server)
         {
@@ -43,38 +45,33 @@ namespace DiffieHellmanClient
             byte arrangement;
             Memory<byte> buffer;
             BigInteger a;
-            Task<BigInteger> a_task = Task.Run(() => Generator.GenerateRandomPrime(256));
+            Task<BigInteger> a_task = Task.Run(() => Generator.GenerateRandomPrime(COUNT_PRIME_BITS / 4));
             do {
-                arrangement = (byte)ran.Next(0, 255); // Договорённость.
-                buffer = new Memory<byte>(new byte[1]);
-                Write(client, new Memory<byte>(new byte[] { arrangement }));
-                if (Read(client, buffer) > 1)
+                arrangement = (byte)ran.Next(byte.MinValue, byte.MaxValue); // Договорённость.
+                server.Write(client, new Memory<byte>(new byte[] { arrangement }));
+                buffer = server.Read(client);
+                if (buffer.Length > 1)
                     throw new Exception("Не совпадает протокол. " + string.Join(", ", buffer));
             } while (arrangement == buffer.Span[0]);
             BigInteger p;
             BigInteger g;
             if (arrangement > buffer.Span[0])
             {
-                p = Generator.GenerateRandomPrime(1024);
+                p = Generator.GenerateRandomPrime(COUNT_PRIME_BITS);
+                server.Write(client, p.ToByteArray());
                 g = AntiderivativeRootModulo(p);
+                server.Write(client, g.ToByteArray());
             }
             else
             {
-                buffer = new Memory<byte>(new byte[1024 / 8]);
-                if (Read(client, buffer) != 1024 / 8)
-                    throw new Exception("Не совпадает протокол. " + string.Join(", ", buffer));
-                p = new BigInteger(buffer.ToArray());
-                int size = Read(client, buffer);
-                g = new BigInteger(buffer.Span.Slice(0, size).ToArray());
+                p = new BigInteger(server.Read(client).ToArray());
+                g = new BigInteger(server.Read(client).ToArray());
             }
             a_task.Wait();
             a = a_task.Result;
             BigInteger A = BigInteger.ModPow(g, a, p);
-            byte[] A_array = A.ToByteArray();
-            Write(client, A_array);
-            byte[] B_array = new byte[A_array.Length * 2];
-            Span<byte> B_span = new Span<byte>(B_array).Slice(0, Read(client, B_array));
-            BigInteger B = new BigInteger(B_span.ToArray());
+            server.Write(client, A.ToByteArray());
+            BigInteger B = new BigInteger(server.Read(client).ToArray());
             BigInteger K = BigInteger.ModPow(B, a, p);
             users[client] = new Memory<byte>(K.ToByteArray());
         }
@@ -91,21 +88,6 @@ namespace DiffieHellmanClient
                 b ^= key.Current;
             }
             return output;
-        }
-
-        private int Read(TcpClient connection, Memory<byte> buffer)
-        {
-            using CancellationTokenSource src = new CancellationTokenSource(timeout);
-            var result = connection.GetStream().ReadAsync(buffer, src.Token);
-            result.AsTask().Wait();
-            return result.Result;
-        }
-
-        private void Write(TcpClient connection, ReadOnlyMemory<byte> buffer)
-        {
-            using CancellationTokenSource src = new CancellationTokenSource(timeout);
-            var result = connection.GetStream().WriteAsync(buffer, src.Token);
-            result.AsTask().Wait();
         }
 
         public Memory<byte> Encrypt(TcpClient client, Memory<byte> msg)
@@ -151,27 +133,10 @@ namespace DiffieHellmanClient
             {
                 bool ok = true;
                 for (int i = 0; i < fact.Count && ok; i++)
-                    ok &= Powmod(res, phi / fact[i], p) != 1;
+                    ok &= BigInteger.ModPow(res, phi / fact[i], p) != 1;
                 if (ok) return res;
             }
             return -1;
-
-            static BigInteger Powmod(BigInteger a, BigInteger b, BigInteger p)
-            {
-                BigInteger res = 1;
-                while (b != 0)
-                    if ((b & 1) != 0)
-                    {
-                        res = (int)(res * a % p);
-                        --b;
-                    }
-                    else
-                    {
-                        a = (int)(a * 1L * a % p);
-                        b >>= 1;
-                    }
-                return res;
-            }
         }
     }
 }

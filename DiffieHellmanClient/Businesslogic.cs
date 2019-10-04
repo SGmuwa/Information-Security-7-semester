@@ -11,7 +11,7 @@ namespace DiffieHellmanClient
     public class Businesslogic : IDisposable
     {
         private P2PClient Server = null;
-        private ICrypter crypter;
+        private Crypter crypter;
 
         private readonly Stack<PackageInfo> messages = new Stack<PackageInfo>();
         /// <summary>
@@ -50,7 +50,7 @@ namespace DiffieHellmanClient
         {
             Memory<byte> info = new Memory<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(msg)));
             info = crypter.Encrypt(client, info);
-            client.GetStream().Write(info.Span);
+            Server.Write(client, info);
         }
 
         public void SendAll(dynamic msg)

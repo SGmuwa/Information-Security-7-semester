@@ -1,0 +1,4 @@
+﻿[*.cs]
+
+# IDE0069: Следует высвобождать высвобождаемые поля
+dotnet_diagnostic.IDE0069.severity = warning
