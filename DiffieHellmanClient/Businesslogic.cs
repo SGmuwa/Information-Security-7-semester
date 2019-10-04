@@ -11,7 +11,7 @@ namespace DiffieHellmanClient
     class Businesslogic : IDisposable
     {
         private P2PClient Server = null;
-        private readonly ICrypter crypter = new Crypter();
+        private ICrypter crypter;
 
         private readonly Stack<dynamic> messages = new Stack<dynamic>();
         /// <summary>
@@ -25,6 +25,7 @@ namespace DiffieHellmanClient
         {
             Server?.Dispose();
             Server = thisServer;
+            crypter = new Crypter(Server);
             Server.OnMessageSend += p_OnMessageSend;
             Server.OnConnection += p_OnConnection;
         }
@@ -36,9 +37,9 @@ namespace DiffieHellmanClient
 
         private void p_OnMessageSend(P2PClient sender, TcpClient client, Memory<byte> msg)
         {
-            if (crypter.IsConnectionSafe)
+            if (crypter.IsConnectionSafe(client))
             {
-                msg = crypter.Decrypt(msg);
+                msg = crypter.Decrypt(client, msg);
                 dynamic json = JsonConvert.DeserializeObject(Encoding.UTF8.GetString(msg.Span));
                 messages.Push(new { TimeGet = DateTime.Now, Client = client, Json = json });
                 OnMessageSend?.Invoke(sender, client, messages.Peek());
@@ -48,7 +49,7 @@ namespace DiffieHellmanClient
         public void Send(TcpClient client, dynamic msg)
         {
             Memory<byte> info = new Memory<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(msg)));
-            info = crypter.Encrypt(info);
+            info = crypter.Encrypt(client, info);
             client.GetStream().Write(info.Span);
         }
 

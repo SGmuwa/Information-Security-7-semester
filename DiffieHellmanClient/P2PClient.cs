@@ -49,12 +49,13 @@ namespace DiffieHellmanClient
 
         public bool IsLive => timer.Enabled;
 
-        public void AddConnection(IPEndPoint toConnect)
+        public TcpClient AddConnection(IPEndPoint toConnect)
         {
             TcpClient client = new TcpClient(TcpListener.Server.AddressFamily);
             client.Connect(toConnect);
             Clients.Add(client);
             OnConnection?.Invoke(this, client);
+            return client;
         }
 
         private void RemoveOffline()
@@ -72,7 +73,12 @@ namespace DiffieHellmanClient
         {
             while (timer.Enabled)
                 if (TcpListener.Pending())
-                    Clients.Add(TcpListener.AcceptTcpClient());
+                {
+                    TcpClient @new = TcpListener.AcceptTcpClient();
+                    Clients.Add(@new);
+         /*try { */ OnConnection?.Invoke(this, @new); /*}
+                    catch (Exception e) { Console.WriteLine(e.Message); } */
+                }
                 else
                     Thread.Sleep(50);
         }

@@ -25,7 +25,7 @@ namespace DiffieHellmanClient.Commands
                 new Exit(this),
                 new SetLocalPort(this),
                 new SendAll(this),
-                new AddConection(this),
+                new AddConnection(this),
                 new ReadAllMessages(this)
             });
         }

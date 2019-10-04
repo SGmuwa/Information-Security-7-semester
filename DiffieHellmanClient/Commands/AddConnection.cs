@@ -1,16 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Net;
 
 namespace DiffieHellmanClient.Commands
 {
-    class AddConection : AbstractCommand
+    class AddConnection : AbstractCommand
     {
         private readonly CommandsProvider provider;
 
-        public AddConection(CommandsProvider provider)
-            : base(nameof(AddConection))
+        public AddConnection(CommandsProvider provider)
+            : base(nameof(AddConnection))
         {
             this.provider = provider;
         }
