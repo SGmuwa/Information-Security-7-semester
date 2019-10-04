@@ -18,7 +18,6 @@ namespace DiffieHellmanClient
         private readonly TcpListener TcpListener;
 
         private readonly System.Timers.Timer timer = new System.Timers.Timer(20);
-        private readonly CancellationTokenSource CancelTokenSrc;
         private TimeSpan timeout = TimeSpan.FromSeconds(20);
 
         public TimeSpan Timeout
@@ -51,7 +50,6 @@ namespace DiffieHellmanClient
         /// <param name="port">Порт, который будет прослушиваться и из которого будут идти пакеты.</param>
         public P2PClient(ushort port)
         {
-            CancelTokenSrc = new CancellationTokenSource(timeout);
             TcpListener = new TcpListener(IPAddress.Any, port);
             TcpListener.Start();
             timer.Elapsed += TimerListner;
@@ -77,6 +75,7 @@ namespace DiffieHellmanClient
         /// <param name="toWrite">Данные, которые надо отправить.</param>
         public void Write(TcpClient client, Memory<byte> toWrite)
         {
+            using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
             using var str = new MemoryStream();
             str.Write(BitConverter.GetBytes(toWrite.Length), 0, sizeof(int));
             str.Write(toWrite.Span);
@@ -90,6 +89,7 @@ namespace DiffieHellmanClient
         /// <returns>Пакет данных от клиента.</returns>
         public Memory<byte> Read(TcpClient client)
         {
+            using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
             Memory<byte> buffer = new byte[sizeof(int)];
             client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
             int Length = BitConverter.ToInt32(buffer.Span);
@@ -106,7 +106,6 @@ namespace DiffieHellmanClient
             timer.Dispose();
             foreach (TcpClient c in Clients)
                 c.Dispose();
-            CancelTokenSrc.Dispose();
         }
 
         private void RemoveOffline()
