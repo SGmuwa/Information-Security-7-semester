@@ -44,6 +44,8 @@ namespace DiffieHellmanClient
         /// </summary>
         public event Action<P2PClient, TcpClient> OnDisconnect;
 
+        public readonly object TokenToIO = new object();
+
         /// <summary>
         /// Создать точку приёма пакетов.
         /// </summary>
@@ -78,16 +80,14 @@ namespace DiffieHellmanClient
         /// <param name="toWrite">Данные, которые надо отправить.</param>
         public void Write(TcpClient client, Memory<byte> toWrite)
         {
-            lock (sync1)
-            {
-                using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
-                using var str = new MemoryStream();
-                str.Write(BitConverter.GetBytes(toWrite.Length), 0, sizeof(int));
-                str.Write(toWrite.Span);
-                Console.WriteLine($"{this}, Записываю пакет: {toWrite.Length} байт, {string.Join(" ", toWrite.ToArray())}");
+            using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
+            using var str = new MemoryStream();
+            str.Write(BitConverter.GetBytes(toWrite.Length), 0, sizeof(int));
+            str.Write(toWrite.Span);
+            Console.WriteLine($"{this}, Записываю пакет: {toWrite.Length} байт, {string.Join(" ", toWrite.ToArray())}");
+            lock (TokenToIO)
                 client.GetStream().WriteAsync(str.ToArray(), CancelTokenSrc.Token).AsTask().Wait();
-                //Console.WriteLine($"{this}, Отправлено.");
-            }
+            //Console.WriteLine($"{this}, Отправлено.");
         }
 
         private object sync1 = new object(), sync2 = new object();
@@ -99,20 +99,20 @@ namespace DiffieHellmanClient
         /// <returns>Пакет данных от клиента.</returns>
         public Memory<byte> Read(TcpClient client)
         {
-            lock (sync2)
+            using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
+            Memory<byte> buffer = new byte[sizeof(int)];
+            //Console.WriteLine($"{this}, Читаю размер пакета (4 байта)...");
+            lock (TokenToIO)
             {
-                using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
-                Memory<byte> buffer = new byte[sizeof(int)];
-                //Console.WriteLine($"{this}, Читаю размер пакета (4 байта)...");
                 client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
                 int Length = BitConverter.ToInt32(buffer.Span);
                 //Console.WriteLine($"{this}, Прочитал length: {Length}");
                 buffer = new byte[Length];
                 //Console.WriteLine($"{this}, Читаю пакет {Length} байт...");
                 client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
-                Console.WriteLine($"{this}, Прочитал: {string.Join(" ", buffer.ToArray())}");
-                return buffer;
             }
+            Console.WriteLine($"{this}, Прочитал: {string.Join(" ", buffer.ToArray())}");
+            return buffer;
         }
 
         public IEnumerator<TcpClient> GetEnumerator() => Clients.GetEnumerator();
@@ -139,16 +139,19 @@ namespace DiffieHellmanClient
         private void AcceptConnections()
         {
             while (timer.Enabled)
-                if (TcpListener.Pending())
+                lock (TokenToIO)
                 {
-                    TcpClient @new = TcpListener.AcceptTcpClient();
-                    Clients.Add(@new);
-                    /*try { */
-                    OnConnection?.Invoke(this, @new); /*}
+                    if (TcpListener.Pending())
+                    {
+                        TcpClient @new = TcpListener.AcceptTcpClient();
+                        Clients.Add(@new);
+                        /*try { */
+                        OnConnection?.Invoke(this, @new); /*}
                     catch (Exception e) { Console.WriteLine(e.Message); } */
+                    }
+                    else
+                        Thread.Sleep(50);
                 }
-                else
-                    Thread.Sleep(50);
         }
 
 

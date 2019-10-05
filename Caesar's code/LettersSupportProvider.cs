@@ -18,7 +18,7 @@ namespace Caesar_s_code
 
 
         static LettersSupportProvider()
-            => LettersSetSettings(TypeLettersSupport.get_all);
+            => LettersSetSettings(TypeLettersSupport.russian);
 
         public static void LettersSetSettings(TypeLettersSupport set)
         {

@@ -12,6 +12,7 @@ namespace DiffieHellmanClient
     {
         private P2PClient Server = null;
         private Crypter crypter;
+        public object GetTokenIO => Server.TokenToIO;
 
         private readonly Stack<PackageInfo> messages = new Stack<PackageInfo>();
         /// <summary>
@@ -32,7 +33,8 @@ namespace DiffieHellmanClient
 
         private void p_OnConnection(P2PClient server, TcpClient client)
         {
-            crypter.AddUser(client);
+            lock(GetTokenIO)
+                crypter.AddUser(client);
         }
 
         private void p_OnMessageSend(P2PClient sender, TcpClient client, Memory<byte> msg)
@@ -51,6 +53,7 @@ namespace DiffieHellmanClient
             Memory<byte> info = new Memory<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(msg)));
             info = crypter.Encrypt(client, info);
             Server.Write(client, info);
+
         }
 
         public void SendAll(dynamic msg)
