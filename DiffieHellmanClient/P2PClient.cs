@@ -48,13 +48,16 @@ namespace DiffieHellmanClient
         /// Создать точку приёма пакетов.
         /// </summary>
         /// <param name="port">Порт, который будет прослушиваться и из которого будут идти пакеты.</param>
-        public P2PClient(ushort port)
+        public P2PClient(ushort port, string nameServer = default)
         {
             TcpListener = new TcpListener(IPAddress.Any, port);
             TcpListener.Start();
             timer.Elapsed += TimerListner;
             Task.Run(AcceptConnections);
             timer.Start();
+            if (nameServer == default)
+                nameServer = GetHashCode().ToString();
+            this.nameServer = nameServer;
         }
 
         public bool IsLive => timer.Enabled;
@@ -75,12 +78,19 @@ namespace DiffieHellmanClient
         /// <param name="toWrite">Данные, которые надо отправить.</param>
         public void Write(TcpClient client, Memory<byte> toWrite)
         {
-            using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
-            using var str = new MemoryStream();
-            str.Write(BitConverter.GetBytes(toWrite.Length), 0, sizeof(int));
-            str.Write(toWrite.Span);
-            client.GetStream().WriteAsync(str.ToArray(), CancelTokenSrc.Token).AsTask().Wait();
+            lock (sync1)
+            {
+                using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
+                using var str = new MemoryStream();
+                str.Write(BitConverter.GetBytes(toWrite.Length), 0, sizeof(int));
+                str.Write(toWrite.Span);
+                Console.WriteLine($"{this}, Записываю пакет: {toWrite.Length} байт, {string.Join(" ", toWrite.ToArray())}");
+                client.GetStream().WriteAsync(str.ToArray(), CancelTokenSrc.Token).AsTask().Wait();
+                //Console.WriteLine($"{this}, Отправлено.");
+            }
         }
+
+        private object sync1 = new object(), sync2 = new object();
 
         /// <summary>
         /// Забирает один пакет с клиента.
@@ -89,13 +99,20 @@ namespace DiffieHellmanClient
         /// <returns>Пакет данных от клиента.</returns>
         public Memory<byte> Read(TcpClient client)
         {
-            using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
-            Memory<byte> buffer = new byte[sizeof(int)];
-            client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
-            int Length = BitConverter.ToInt32(buffer.Span);
-            buffer = new byte[Length];
-            client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
-            return buffer;
+            lock (sync2)
+            {
+                using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
+                Memory<byte> buffer = new byte[sizeof(int)];
+                //Console.WriteLine($"{this}, Читаю размер пакета (4 байта)...");
+                client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
+                int Length = BitConverter.ToInt32(buffer.Span);
+                //Console.WriteLine($"{this}, Прочитал length: {Length}");
+                buffer = new byte[Length];
+                //Console.WriteLine($"{this}, Читаю пакет {Length} байт...");
+                client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
+                Console.WriteLine($"{this}, Прочитал: {string.Join(" ", buffer.ToArray())}");
+                return buffer;
+            }
         }
 
         public IEnumerator<TcpClient> GetEnumerator() => Clients.GetEnumerator();
@@ -153,5 +170,12 @@ namespace DiffieHellmanClient
         }
 
         IEnumerator IEnumerable.GetEnumerator() => Clients.GetEnumerator();
+
+        private readonly string nameServer;
+
+        public override string ToString()
+        {
+            return $"P2PClient, {nameServer}";
+        }
     }
 }
