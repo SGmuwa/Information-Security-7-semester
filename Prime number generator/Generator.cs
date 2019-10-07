@@ -177,16 +177,20 @@ namespace Prime_number_generator
             using CancellationTokenSource tkSource = new CancellationTokenSource();
             try
             {
-                Parallel.ForEach(primes, (n) =>
+                BigInteger outputSqrt = output.Sqrt();
+                Parallel.ForEach(from p in primes where p < outputSqrt select p, (n) =>
                 {
                     if (output % n == 0)
                         tkSource.Cancel();
                 });
-                Parallel.For(0, 5, new ParallelOptions() { CancellationToken = tkSource.Token }, (i) =>
+                if (primes[^1] < outputSqrt)
                 {
-                    if (!MillerRabinPrimalityTest(output))
-                        tkSource.Cancel();
-                });
+                    Parallel.For(0, 5, new ParallelOptions() { CancellationToken = tkSource.Token }, (i) =>
+                    {
+                        if (!MillerRabinPrimalityTest(output))
+                            tkSource.Cancel();
+                    });
+                }
             }
             catch (OperationCanceledException) { return false; }
             return !tkSource.IsCancellationRequested;
