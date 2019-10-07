@@ -38,8 +38,10 @@ namespace UnitTestProject1
         [DataTestMethod]
         [DataRow(1, 4)]
         [DataRow(20, 4)]
+        [DataRow(500, 16)]
         [DataRow(5, 50)]
-        //[DataRow(1, 128)]
+        [DataRow(2, 128)]
+        [DataRow(1, 1024*4)]
         public void GenerateRandomPrime(int countTry, int countBits)
         {
             Console.WriteLine("Проверьте на простые числа:");
