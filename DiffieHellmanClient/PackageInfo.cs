@@ -15,16 +15,16 @@ namespace DiffieHellmanClient
         /// <summary>
         /// Источник пакета. Кто отправил?
         /// </summary>
-        public TcpClient Source;
+        public ulong UserId;
         /// <summary>
         /// Время получения пакета.
         /// </summary>
         public DateTimeOffset Time;
 
-        public PackageInfo(dynamic Json, TcpClient Source, DateTimeOffset Time = default)
+        public PackageInfo(dynamic Json, ulong UserId, DateTimeOffset Time = default)
         {
             this.Json = Json;
-            this.Source = Source;
+            this.UserId = UserId;
             if (Time == default)
                 Time = DateTimeOffset.Now;
             this.Time = Time;

@@ -18,7 +18,7 @@ namespace DiffieHellmanClient.Commands
 
         protected override void Action(string[] args)
         {
-            foreach (var m in provider.mySystem.GetAllMessages())
+            foreach (PackageInfo m in provider.mySystem.GetAllMessages())
                 Console.WriteLine(MsgToString(m));
             Console.WriteLine("Для выхода нажмите на любую клавишу...");
             try
@@ -32,13 +32,13 @@ namespace DiffieHellmanClient.Commands
             }
         }
 
-        private void OnMessageSend(Businesslogic server, TcpClient client, dynamic message)
+        private void OnMessageSend(Businesslogic server, ulong client, dynamic message)
             => Console.WriteLine(MsgToString(message));
 
-        private string MsgToString(dynamic msg)
+        private string MsgToString(PackageInfo msg)
         {
             if (msg.Json.Type == "msg")
-                return $"at {msg.TimeGet} from {((TcpClient)msg.Client).Client.RemoteEndPoint} text: {msg.Json.Message}";
+                return $"at {msg.Time} from {msg.UserId} ({provider.mySystem.GetEndPoint(msg.UserId)}) text: {msg.Json.Message}";
             else
                 return "";
         }

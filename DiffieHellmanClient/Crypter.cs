@@ -37,9 +37,11 @@ namespace DiffieHellmanClient
         /// <summary>
         /// База данных пользователей и их ключей шифрования.
         /// </summary>
-        private readonly ConcurrentDictionary<TcpClient, Memory<byte>> users = new ConcurrentDictionary<TcpClient, Memory<byte>>();
+        private readonly ConcurrentDictionary<ulong, Memory<byte>> users = new ConcurrentDictionary<ulong, Memory<byte>>();
 
-        public void AddUser(TcpClient client)
+        private readonly ConcurrentDictionary<ulong, BlockingCollection<Memory<byte>>> Messages = new ConcurrentDictionary<ulong, BlockingCollection<Memory<byte>>>();
+
+        public void AddUser(ulong client)
         {
             // Договариваемся, кто генерирует p и g.
             byte arrangement;
@@ -49,7 +51,7 @@ namespace DiffieHellmanClient
             do {
                 arrangement = (byte)ran.Next(byte.MinValue, byte.MaxValue); // Договорённость.
                 server.Write(client, new Memory<byte>(new byte[] { arrangement }));
-                buffer = server.Read(client);
+                buffer = Read(client);
                 if (buffer.Length > 1)
                     throw new Exception("Не совпадает протокол. " + string.Join(", ", buffer));
             } while (arrangement == buffer.Span[0]);
@@ -64,19 +66,19 @@ namespace DiffieHellmanClient
             }
             else
             {
-                p = new BigInteger(server.Read(client).ToArray());
-                g = new BigInteger(server.Read(client).ToArray());
+                p = new BigInteger(Read(client).ToArray());
+                g = new BigInteger(Read(client).ToArray());
             }
             a_task.Wait();
             a = a_task.Result;
             BigInteger A = BigInteger.ModPow(g, a, p);
             server.Write(client, A.ToByteArray());
-            BigInteger B = new BigInteger(server.Read(client).ToArray());
+            BigInteger B = new BigInteger(Read(client).ToArray());
             BigInteger K = BigInteger.ModPow(B, a, p);
             users[client] = new Memory<byte>(K.ToByteArray());
         }
 
-        public Memory<byte> Decrypt(TcpClient client, Memory<byte> msg)
+        public Memory<byte> Decrypt(ulong client, Memory<byte> msg)
         {
             if (!users.ContainsKey(client))
                 throw new Exception("Connection not safe.");
@@ -90,11 +92,24 @@ namespace DiffieHellmanClient
             return output;
         }
 
-        public Memory<byte> Encrypt(TcpClient client, Memory<byte> msg)
+        public Memory<byte> Encrypt(ulong client, Memory<byte> msg)
             => Decrypt(client, msg);
 
-        public bool IsConnectionSafe(TcpClient client)
-            => users.ContainsKey(client);
+        public bool IsConnectionSafe(ulong client, Memory<byte> message)
+        {
+            if (users.ContainsKey(client))
+                return true;
+            BlockingCollection<Memory<byte>> messagesUser = Messages.GetOrAdd(client, _ => new BlockingCollection<Memory<byte>>());
+            messagesUser.Add(message);
+            return false;
+        }
+
+        private Memory<byte> Read(ulong client)
+        {
+            using CancellationTokenSource tokenSource = new CancellationTokenSource(timeout);
+            BlockingCollection<Memory<byte>> messages = Messages.GetOrAdd(client, _ => new BlockingCollection<Memory<byte>>());
+            return messages.Take(tokenSource.Token);
+        }
 
         private static IEnumerable<T> InfinityRepeat<T>(Memory<T> toRepeat)
         {
@@ -105,8 +120,11 @@ namespace DiffieHellmanClient
                     yield return toRepeat.Span[i];
         }
 
-        private void OnClientDisconnect(P2PClient server, TcpClient client)
-            => users.TryRemove(client, out _);
+        private void OnClientDisconnect(P2PClient server, ulong client)
+        {
+            users.TryRemove(client, out _);
+            Messages.TryRemove(client, out _);
+        }
 
 
         /// <summary>

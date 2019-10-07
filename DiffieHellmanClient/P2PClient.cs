@@ -28,6 +28,11 @@ namespace DiffieHellmanClient
         /// </summary>
         private readonly System.Timers.Timer timerRemoverConnecterReader = new System.Timers.Timer(20);
 
+        /// <summary>
+        /// Происходит для отображения всех сообщений.
+        /// </summary>
+        public event Action<string> OnDebugMessage;
+
         private TimeSpan timeout = TimeSpan.FromSeconds(4);
 
         /// <summary>
@@ -51,7 +56,7 @@ namespace DiffieHellmanClient
         /// Происходит при новом подключении.
         /// Вернуть нужно уникальный идентификатор.
         /// </summary>
-        public event Action<P2PClient, ulong> OnConnection;
+        public event Action<P2PClient, ulong> OnConnect;
         /// <summary>
         /// Происходит при обрыве подключения.
         /// </summary>
@@ -79,24 +84,32 @@ namespace DiffieHellmanClient
             TcpClient client = new TcpClient(TcpListener.Server.AddressFamily);
             client.Connect(toConnect);
             ulong id = AddUser(client);
-            OnConnection?.Invoke(this, id);
+            OnConnect?.Invoke(this, id);
             return id;
+        }
+
+        public EndPoint GetEndPoint(ulong id)
+        {
+            if (!Clients.TryGetValue(id, out TcpClient client))
+                throw new Exception("Пользователь не найден.");
+            return client.Client.RemoteEndPoint;
         }
 
         /// <summary>
         /// Отправляет массив данных клиенту.
         /// </summary>
-        /// <param name="client">Пользователь, которому надо отправить пакет.</param>
+        /// <param name="id">Пользователь, которому надо отправить пакет.</param>
         /// <param name="toWrite">Данные, которые надо отправить.</param>
-        public void Write(TcpClient client, Memory<byte> toWrite)
+        public void Write(ulong id, Memory<byte> toWrite)
         {
+            if (!Clients.TryGetValue(id, out TcpClient client))
+                throw new Exception("Пользователь не найден.");
             using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
             using var str = new MemoryStream();
             str.Write(BitConverter.GetBytes(toWrite.Length), 0, sizeof(int));
             str.Write(toWrite.Span);
-            Console.WriteLine($"{this}, Записываю пакет: {toWrite.Length} байт, {string.Join(" ", toWrite.ToArray())}");
+            OnDebugMessage?.Invoke($"{this}, Записываю пакет: {toWrite.Length} байт, {string.Join(" ", toWrite.ToArray())}");
             client.GetStream().WriteAsync(str.ToArray(), CancelTokenSrc.Token).AsTask().Wait();
-            //Console.WriteLine($"{this}, Отправлено.");
         }
 
         /// <summary>
@@ -109,14 +122,11 @@ namespace DiffieHellmanClient
         {
             using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
             Memory<byte> buffer = new byte[sizeof(int)];
-            //Console.WriteLine($"{this}, Читаю размер пакета (4 байта)...");
             client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
             int Length = BitConverter.ToInt32(buffer.Span);
-            //Console.WriteLine($"{this}, Прочитал length: {Length}");
             buffer = new byte[Length];
-            //Console.WriteLine($"{this}, Читаю пакет {Length} байт...");
             client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
-            Console.WriteLine($"{this}, Прочитал: {string.Join(" ", buffer.ToArray())}");
+            OnDebugMessage?.Invoke($"{this}, Прочитал: {string.Join(" ", buffer.ToArray())}");
             return buffer;
         }
 
@@ -153,7 +163,7 @@ namespace DiffieHellmanClient
                 TcpClient @new = TcpListener.AcceptTcpClient();
                 ulong id = AddUser(@new);
                 /*try { */
-                OnConnection?.Invoke(this, id);
+                OnConnect?.Invoke(this, id);
                 /*}
                 catch (Exception e) { Console.WriteLine(e.Message); } */
             }
