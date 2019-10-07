@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Numerics;
 using System.Threading;
@@ -15,7 +16,7 @@ namespace DiffieHellmanClient
 
         private static readonly TimeSpan timeout = TimeSpan.FromMinutes(2);
 
-        private const ushort COUNT_PRIME_BITS = 1024; // Рекомендуется 1024
+        private const ushort COUNT_PRIME_BITS = 64; // Рекомендуется 1024
 
         public Crypter(P2PClient server)
         {
@@ -48,6 +49,7 @@ namespace DiffieHellmanClient
             Memory<byte> buffer;
             BigInteger a;
             Task<BigInteger> a_task = Task.Run(() => Generator.GenerateRandomPrime(COUNT_PRIME_BITS / 4));
+            Task<BigInteger> g_task = null;
             do {
                 arrangement = (byte)ran.Next(byte.MinValue, byte.MaxValue); // Договорённость.
                 server.Write(client, new Memory<byte>(new byte[] { arrangement }));
@@ -56,13 +58,17 @@ namespace DiffieHellmanClient
                     throw new Exception("Не совпадает протокол. " + string.Join(", ", buffer));
             } while (arrangement == buffer.Span[0]);
             BigInteger p;
-            BigInteger g;
+            BigInteger g = -2;
             if (arrangement > buffer.Span[0])
             {
                 p = Generator.GenerateRandomPrime(COUNT_PRIME_BITS);
+                g_task = Task.Run(() =>
+                {
+                    BigInteger res = AntiderivativeRootModulo(p);
+                    server.Write(client, res.ToByteArray());
+                    return res;
+                });
                 server.Write(client, p.ToByteArray());
-                g = AntiderivativeRootModulo(p);
-                server.Write(client, g.ToByteArray());
             }
             else
             {
@@ -71,6 +77,15 @@ namespace DiffieHellmanClient
             }
             a_task.Wait();
             a = a_task.Result;
+            if(g == -2)
+            {
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+                g_task.Wait();
+                sw.Stop();
+                Console.WriteLine($"AntiderivativeRootModulo: {sw.Elapsed}");
+                g = g_task.Result;
+            }
             BigInteger A = BigInteger.ModPow(g, a, p);
             server.Write(client, A.ToByteArray());
             BigInteger B = new BigInteger(Read(client).ToArray());
@@ -135,15 +150,23 @@ namespace DiffieHellmanClient
         /// <see cref="http://e-maxx.ru/algo/export_primitive_root"/>
         private static BigInteger AntiderivativeRootModulo(BigInteger p)
         {
-            List<BigInteger> fact = new List<BigInteger>();
-            BigInteger phi = p - 1, n = phi;
-            for (BigInteger i = 2; i * i <= n; ++i)
-                if (n % i == 0)
+            List<BigInteger> fact = new List<BigInteger>(COUNT_PRIME_BITS / 4);
+            BigInteger phi = p - 1, n = phi, nsqrt = n.Sqrt();
+            Parallel.For(0, Environment.ProcessorCount, _ =>
+            {
+                for (BigInteger i = 2 + _; i <= nsqrt; i += Environment.ProcessorCount)
                 {
-                    fact.Add(i);
-                    while (n % i == 0)
-                        n /= i;
+                    if (n % i == 0)
+                    {
+                        lock (fact)
+                        {
+                            fact.Add(i);
+                            do n /= i; while (n % i == 0);
+                        }
+                        nsqrt = n.Sqrt();
+                    }
                 }
+            });
             if (n > 1)
                 fact.Add(n);
 
