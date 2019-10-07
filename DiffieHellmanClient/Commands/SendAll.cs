@@ -11,7 +11,7 @@
 
         protected override void Action(string[] args)
         {
-            provider.mySystem.SendAll(string.Join(' ', args));
+            provider.mySystem.SendAll(new { Type = "msg", Message = string.Join(' ', args) });
         }
     }
 }

@@ -37,6 +37,8 @@ namespace DiffieHellmanClient.Commands
             Task.Run(mySystem.Run);
             while (!IsNeedStop)
             {
+                while (toPrint.TryDequeue(out string result))
+                    Console.WriteLine(result);
                 history.Add(GetterText());
                 try
                 {

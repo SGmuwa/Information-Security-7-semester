@@ -1,4 +1,6 @@
-﻿namespace DiffieHellmanClient.Commands
+﻿using System;
+
+namespace DiffieHellmanClient.Commands
 {
     internal class DebugMessages : AbstractCommand
     {
@@ -18,9 +20,15 @@
         {
             isOn =! isOn;
             if (isOn)
+            {
                 provider.mySystem.OnDebugMessage += OnDebugMessage;
+                Console.WriteLine("Debug включён.");
+            }
             else
+            {
                 provider.mySystem.OnDebugMessage -= OnDebugMessage;
+                Console.WriteLine("Debug выключен.");
+            }
         }
 
         private void OnDebugMessage(Businesslogic sender, string arg)

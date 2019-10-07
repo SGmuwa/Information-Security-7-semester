@@ -30,6 +30,7 @@ namespace DiffieHellmanClient
             Server?.Dispose();
             Server = thisServer;
             crypter = new Crypter(Server);
+            Server.OnDebugMessage += _ => OnDebugMessage(this, _);
             Server.OnMessageSend += p_OnMessageSend;
             Server.OnConnect += p_OnConnection;
         }

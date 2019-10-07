@@ -13,7 +13,7 @@ namespace DiffieHellmanClient
     {
         private readonly P2PClient server;
 
-        private static readonly TimeSpan timeout = TimeSpan.FromMinutes(30);
+        private static readonly TimeSpan timeout = TimeSpan.FromSeconds(4);
 
         private const ushort COUNT_PRIME_BITS = 50; // Рекомендуется 1024
 
