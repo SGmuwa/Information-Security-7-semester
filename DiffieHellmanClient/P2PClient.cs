@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Timers;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections;
@@ -12,14 +13,26 @@ using System.IO;
 
 namespace DiffieHellmanClient
 {
-    public class P2PClient : IDisposable, IEnumerable<TcpClient>, IEnumerable
+    public class P2PClient : IDisposable, IEnumerable<ulong>, IEnumerable
     {
-        private readonly HashSet<TcpClient> Clients = new HashSet<TcpClient>();
+        private readonly ConcurrentDictionary<ulong, TcpClient> Clients = new ConcurrentDictionary<ulong, TcpClient>();
         private readonly TcpListener TcpListener;
+        /// <summary>
+        /// Название сервера. Используется для Debug.
+        /// </summary>
+        private readonly string nameServer;
+        /// <summary>
+        /// Таймер для удаления отключенных пользователей,
+        /// подключения новых пользователей,
+        /// чтения новых сообщений.
+        /// </summary>
+        private readonly System.Timers.Timer timerRemoverConnecterReader = new System.Timers.Timer(20);
 
-        private readonly System.Timers.Timer timer = new System.Timers.Timer(20);
-        private TimeSpan timeout = TimeSpan.FromSeconds(20);
+        private TimeSpan timeout = TimeSpan.FromSeconds(4);
 
+        /// <summary>
+        /// Отвечает за период ожидания пакета от пользователя.
+        /// </summary>
         public TimeSpan Timeout
         {
             get => timeout; set
@@ -33,18 +46,16 @@ namespace DiffieHellmanClient
         /// <summary>
         /// Происходит при получении сообщения от кого-либо.
         /// </summary>
-        public event Action<P2PClient, TcpClient, Memory<byte>> OnMessageSend;
+        public event Action<P2PClient, ulong, Memory<byte>> OnMessageSend;
         /// <summary>
         /// Происходит при новом подключении.
         /// Вернуть нужно уникальный идентификатор.
         /// </summary>
-        public event Action<P2PClient, TcpClient> OnConnection;
+        public event Action<P2PClient, ulong> OnConnection;
         /// <summary>
         /// Происходит при обрыве подключения.
         /// </summary>
-        public event Action<P2PClient, TcpClient> OnDisconnect;
-
-        public readonly object TokenToIO = new object();
+        public event Action<P2PClient, ulong> OnDisconnect;
 
         /// <summary>
         /// Создать точку приёма пакетов.
@@ -54,23 +65,22 @@ namespace DiffieHellmanClient
         {
             TcpListener = new TcpListener(IPAddress.Any, port);
             TcpListener.Start();
-            timer.Elapsed += TimerListner;
-            Task.Run(AcceptConnections);
-            timer.Start();
+            timerRemoverConnecterReader.Elapsed += TimerListner;
+            timerRemoverConnecterReader.Start();
             if (nameServer == default)
                 nameServer = GetHashCode().ToString();
             this.nameServer = nameServer;
         }
 
-        public bool IsLive => timer.Enabled;
+        public bool IsLive => timerRemoverConnecterReader.Enabled;
 
-        public TcpClient AddConnection(IPEndPoint toConnect)
+        public ulong AddConnection(IPEndPoint toConnect)
         {
             TcpClient client = new TcpClient(TcpListener.Server.AddressFamily);
             client.Connect(toConnect);
-            Clients.Add(client);
-            OnConnection?.Invoke(this, client);
-            return client;
+            ulong id = AddUser(client);
+            OnConnection?.Invoke(this, id);
+            return id;
         }
 
         /// <summary>
@@ -85,96 +95,111 @@ namespace DiffieHellmanClient
             str.Write(BitConverter.GetBytes(toWrite.Length), 0, sizeof(int));
             str.Write(toWrite.Span);
             Console.WriteLine($"{this}, Записываю пакет: {toWrite.Length} байт, {string.Join(" ", toWrite.ToArray())}");
-            lock (TokenToIO)
-                client.GetStream().WriteAsync(str.ToArray(), CancelTokenSrc.Token).AsTask().Wait();
+            client.GetStream().WriteAsync(str.ToArray(), CancelTokenSrc.Token).AsTask().Wait();
             //Console.WriteLine($"{this}, Отправлено.");
         }
-
-        private object sync1 = new object(), sync2 = new object();
 
         /// <summary>
         /// Забирает один пакет с клиента.
         /// </summary>
         /// <param name="client">Клиент, от которого надо получить пакет.</param>
         /// <returns>Пакет данных от клиента.</returns>
-        public Memory<byte> Read(TcpClient client)
+        /// <exception cref="OperationCanceledException">Не удалось дождаться ответа от пользователя.</exception>
+        private Memory<byte> Read(TcpClient client)
         {
             using CancellationTokenSource CancelTokenSrc = new CancellationTokenSource(Timeout);
             Memory<byte> buffer = new byte[sizeof(int)];
             //Console.WriteLine($"{this}, Читаю размер пакета (4 байта)...");
-            lock (TokenToIO)
-            {
-                client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
-                int Length = BitConverter.ToInt32(buffer.Span);
-                //Console.WriteLine($"{this}, Прочитал length: {Length}");
-                buffer = new byte[Length];
-                //Console.WriteLine($"{this}, Читаю пакет {Length} байт...");
-                client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
-            }
+            client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
+            int Length = BitConverter.ToInt32(buffer.Span);
+            //Console.WriteLine($"{this}, Прочитал length: {Length}");
+            buffer = new byte[Length];
+            //Console.WriteLine($"{this}, Читаю пакет {Length} байт...");
+            client.GetStream().ReadAsync(buffer, CancelTokenSrc.Token).AsTask().Wait();
             Console.WriteLine($"{this}, Прочитал: {string.Join(" ", buffer.ToArray())}");
             return buffer;
         }
 
-        public IEnumerator<TcpClient> GetEnumerator() => Clients.GetEnumerator();
+        public IEnumerator<ulong> GetEnumerator() => (from u in Clients select u.Key).GetEnumerator();
 
         public void Dispose()
         {
             TcpListener.Stop();
-            timer.Dispose();
-            foreach (TcpClient c in Clients)
-                c.Dispose();
+            timerRemoverConnecterReader.Dispose();
+            foreach (var pair in Clients)
+                pair.Value.Dispose();
         }
 
-        private void RemoveOffline()
+        public void Disconnect(ulong id)
         {
-            HashSet<TcpClient> toRemove = new HashSet<TcpClient>(from client in Clients where !client.Connected select client);
-            foreach (TcpClient client in toRemove)
+            if (Clients.TryRemove(id, out TcpClient client))
             {
-                Clients.Remove(client);
-                OnDisconnect?.Invoke(this, client);
+                OnDisconnect?.Invoke(this, id);
                 client.Dispose();
             }
         }
 
+        private void RemoveOffline()
+        {
+            IEnumerable<ulong> toRemove = from pair in Clients where !pair.Value.Connected select pair.Key;
+            foreach (ulong id in toRemove)
+                Disconnect(id);
+        }
+
         private void AcceptConnections()
         {
-            while (timer.Enabled)
-                lock (TokenToIO)
+            if (TcpListener.Pending())
+            {
+                TcpClient @new = TcpListener.AcceptTcpClient();
+                ulong id = AddUser(@new);
+                /*try { */
+                OnConnection?.Invoke(this, id);
+                /*}
+                catch (Exception e) { Console.WriteLine(e.Message); } */
+            }
+        }
+        
+
+        private void ReadAll()
+        {
+            foreach (KeyValuePair<ulong, TcpClient> pair in from pair in Clients where pair.Value.Available > 0 select pair)
+            {
+                Memory<byte> msg;
+                try
                 {
-                    if (TcpListener.Pending())
-                    {
-                        TcpClient @new = TcpListener.AcceptTcpClient();
-                        Clients.Add(@new);
-                        /*try { */
-                        OnConnection?.Invoke(this, @new); /*}
-                    catch (Exception e) { Console.WriteLine(e.Message); } */
-                    }
-                    else
-                        Thread.Sleep(50);
+                    msg = Read(pair.Value);
                 }
+                catch
+                {
+                    Disconnect(pair.Key);
+                    break;
+                }
+                OnMessageSend?.Invoke(this, pair.Key, msg);
+            }
         }
 
 
         private void TimerListner(object sender, ElapsedEventArgs args)
         {
+            AcceptConnections();
             RemoveOffline();
-            foreach (TcpClient client in from c in Clients where c.Available > 0 select c)
-            {
-                Memory<byte> msg = Read(client);
-                try
-                {
-                    OnMessageSend?.Invoke(this, client, msg);
-                }
-                catch (Exception e)
-                {
-                    OnMessageSend?.Invoke(this, client, Encoding.UTF8.GetBytes(e.Message));
-                }
-            }
+            ReadAll();
+        }
+
+        private readonly Random ran = new Random();
+
+        private int NextRandom()
+        { lock(ran) { return ran.Next(int.MinValue, int.MaxValue); } }
+
+        private ulong AddUser(TcpClient toAdd)
+        {
+            ulong id;
+            do { id = ((ulong)NextRandom() << 32) | (uint)NextRandom(); }
+            while (!Clients.TryAdd(id, toAdd));
+            return id;
         }
 
         IEnumerator IEnumerable.GetEnumerator() => Clients.GetEnumerator();
-
-        private readonly string nameServer;
 
         public override string ToString()
         {
