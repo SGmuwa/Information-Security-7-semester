@@ -175,7 +175,7 @@ namespace DiffieHellmanClient
                 BigInteger start = 2;
                 BigInteger localN = n;
                 BigInteger localNSqrt = localN.Sqrt();
-                while (start < n)
+                while (start < localNSqrt)
                 {
                     yield return start++;
                     if (localN != n)
