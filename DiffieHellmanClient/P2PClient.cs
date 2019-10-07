@@ -134,8 +134,8 @@ namespace DiffieHellmanClient
 
         public void Dispose()
         {
-            TcpListener.Stop();
             timerRemoverConnecterReader.Dispose();
+            TcpListener.Stop();
             foreach (var pair in Clients)
                 pair.Value.Dispose();
         }
