@@ -135,62 +135,26 @@ namespace DiffieHellmanClient
         /// <see cref="http://e-maxx.ru/algo/export_primitive_root"/>
         private static BigInteger AntiderivativeRootModulo(BigInteger p)
         {
-            ConcurrentQueue<BigInteger> fact = new ConcurrentQueue<BigInteger>();
+            List<BigInteger> fact = new List<BigInteger>();
             BigInteger phi = p - 1, n = phi;
-            Parallel.ForEach(Enumirable1(), (i) =>
-            {
+            for (BigInteger i = 2; i * i <= n; ++i)
                 if (n % i == 0)
                 {
-                    fact.Enqueue(i);
+                    fact.Add(i);
                     while (n % i == 0)
                         n /= i;
                 }
-            });
             if (n > 1)
-                fact.Enqueue(n);
+                fact.Add(n);
 
-            BigInteger res = 2;
-            using CancellationTokenSource tokenSource = new CancellationTokenSource();
-            try
+            for (BigInteger res = 2; res <= p; ++res)
             {
-                Parallel.ForEach(Enumirable2(2, p), new ParallelOptions() { CancellationToken = tokenSource.Token },
-                    (lres) =>
-                {
-                    foreach (BigInteger i in fact)
-                        if (BigInteger.ModPow(lres, phi / i, p) == 1)
-                            goto forContinue;
-                    res = lres;
-                    tokenSource.Cancel();
-                    forContinue:;
-                });
+                bool ok = true;
+                for (int i = 0; i < fact.Count && ok; i++)
+                    ok &= BigInteger.ModPow(res, phi / fact[i], p) != 1;
+                if (ok) return res;
             }
-            catch(OperationCanceledException)
-            {
-                return res;
-            }
-            throw new Exception("Не найдено");
-
-            IEnumerable<BigInteger> Enumirable1()
-            {
-                BigInteger start = 2;
-                BigInteger localN = n;
-                BigInteger localNSqrt = localN.Sqrt();
-                while (start < localNSqrt)
-                {
-                    yield return start++;
-                    if (localN != n)
-                    {
-                        localN = n;
-                        localNSqrt = localN.Sqrt();
-                    }
-                }
-            }
-
-            static IEnumerable<BigInteger> Enumirable2(BigInteger min, BigInteger max)
-            {
-                while (min < max)
-                    yield return min++;
-            }
+            return -1;
         }
     }
 }
