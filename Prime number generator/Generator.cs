@@ -74,13 +74,15 @@ namespace Prime_number_generator
         }
 
 
-        public static BigInteger GenerateRandomPrime(int countBits)
+        public static BigInteger GenerateRandomPrime(int countBits, CancellationToken token = default, bool isNeedSleep = false)
         {
             if (countBits < 2)
                 throw new ArgumentException();
             BigInteger output;
             do
             {
+                if(token != default) token.ThrowIfCancellationRequested();
+                if (isNeedSleep) Thread.Sleep(0);
                 output = GenerateRandomBits((uint)countBits);
                 output |= 1;
                 output |= BigInteger.One << (countBits - 1);

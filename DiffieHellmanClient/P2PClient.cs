@@ -149,6 +149,8 @@ namespace DiffieHellmanClient
             }
         }
 
+        public void DebugInfo(string msg) => OnDebugMessage?.Invoke(msg);
+
         private void RemoveOffline()
         {
             IEnumerable<ulong> toRemove = from pair in Clients where !pair.Value.Connected select pair.Key;

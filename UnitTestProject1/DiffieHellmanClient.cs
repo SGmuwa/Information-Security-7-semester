@@ -25,6 +25,8 @@ namespace UnitTestProject1
             Program1.InitServer(new P2PClient(1000, "Источник"));
             using Businesslogic Program2 = new Businesslogic();
             Program2.InitServer(new P2PClient(1001, "Приёмщик"));
+            Program1.OnDebugMessage += (a, b) => Console.WriteLine(b);
+            Program2.OnDebugMessage += (a, b) => Console.WriteLine(b);
             Stopwatch sw = new Stopwatch();
             sw.Start();
             ulong From1To2 = Program1.AddConection(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 1001));
