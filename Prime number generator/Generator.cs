@@ -57,7 +57,7 @@ namespace Prime_number_generator
 
         private static readonly Random ran = new Random();
 
-        private static BigInteger GenerateRandomBits(ulong countBits)
+        public static BigInteger GenerateRandomBits(ulong countBits)
         {
             byte[] output = new byte[countBits / 8 + (countBits % 8 == 0 ? 0ul : 1ul)];
             ran.NextBytes(output);
