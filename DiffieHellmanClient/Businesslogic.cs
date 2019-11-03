@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Linq;
-using System.Net.Sockets;
 using Newtonsoft.Json;
 using System.Text;
 
@@ -11,13 +10,21 @@ namespace DiffieHellmanClient
     public class Businesslogic : IDisposable
     {
         private P2PClient Server = null;
-        private Crypter crypter;
+        private ICrypter crypter;
 
         private readonly Stack<PackageInfo> messages = new Stack<PackageInfo>();
         /// <summary>
         /// Происходит при получении сообщения от кого-либо.
         /// </summary>
         public event Action<Businesslogic, ulong, dynamic> OnMessageSend;
+        /// <summary>
+        /// Вызывается при отключении пользователя.
+        /// </summary>
+        public event Action<Businesslogic, ulong> OnUserDisconnect;
+        /// <summary>
+        /// Вызывается при подключении пользователя.
+        /// </summary>
+        public event Action<Businesslogic, ulong> OnUserConnect;
         /// <summary>
         /// Происходит при попытке <see cref="P2PClient"/> сообщить подробности об процессе.
         /// </summary>
@@ -33,6 +40,7 @@ namespace DiffieHellmanClient
             Server.OnDebugMessage += str => OnDebugMessage?.Invoke(this, str);
             Server.OnMessageSend += p_OnMessageSend;
             Server.OnConnect += p_OnConnection;
+            Server.OnDisconnect += (_, u) => OnUserDisconnect?.Invoke(this, u);
         }
 
         private void p_OnConnection(P2PClient server, ulong userId)
@@ -40,6 +48,7 @@ namespace DiffieHellmanClient
             try
             {
                 crypter.AddUser(userId);
+                OnUserConnect?.Invoke(this, userId);
             }
             catch(System.OperationCanceledException)
             {

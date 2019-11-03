@@ -28,5 +28,6 @@
     <Content Include="Commands\SearchRecommendations.cs" />
     <Content Include="Commands\SendAll.cs" />
     <Content Include="Commands\SetLocalPort.cs" />
+    <Content Include="SimpleWriterReader.cs" />
   </ItemGroup>
 </Project>

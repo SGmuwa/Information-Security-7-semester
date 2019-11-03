@@ -15,7 +15,9 @@ namespace DiffieHellmanClient
 
         private static readonly TimeSpan timeout = TimeSpan.FromMinutes(2);
 
-        private const ushort COUNT_PRIME_BITS = 64; // Рекомендуется 1024
+        private static SimpleWriterReader wr;
+
+        private const ushort COUNT_PRIME_BITS = 80; // Рекомендуется 1024
 
         public Crypter(P2PClient server)
         {
