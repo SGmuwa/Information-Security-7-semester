@@ -22,14 +22,16 @@ namespace UnitTestProject1
         public void Test1()
         {
             using Businesslogic Program1 = new Businesslogic();
-            Program1.InitServer(new P2PClient(1000, "Источник"));
+            P2PClient server1 = new P2PClient("Источник");
+            Program1.InitServer(server1);
             using Businesslogic Program2 = new Businesslogic();
-            Program2.InitServer(new P2PClient(1001, "Приёмщик"));
+            P2PClient server2 = new P2PClient("Приёмщик");
+            Program2.InitServer(server2);
             Program1.OnDebugMessage += (a, b) => Console.WriteLine(b);
             Program2.OnDebugMessage += (a, b) => Console.WriteLine(b);
             Stopwatch sw = new Stopwatch();
             sw.Start();
-            ulong From1To2 = Program1.AddConection(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 1001));
+            ulong From1To2 = Program1.AddConnection(new IPEndPoint(IPAddress.Parse("127.0.0.1"), server2.LocalEndPoint.Port));
             var toSend = new { Type = "msg", Message = new string('a', 128) };
             Program1.Send(From1To2, toSend);
             Program2.OnMessageSend += Program2_OnMessageSend;
@@ -40,6 +42,8 @@ namespace UnitTestProject1
             catch { }
             sw.Stop();
             Console.WriteLine(sw.Elapsed);
+            Program1.Dispose();
+            Program2.Dispose();
             return;
 
             void Program2_OnMessageSend(Businesslogic arg1, ulong arg2, dynamic arg3)

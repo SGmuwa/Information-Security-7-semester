@@ -37,7 +37,14 @@ namespace DiffieHellmanClient
 
         private void p_OnConnection(P2PClient server, ulong userId)
         {
-            crypter.AddUser(userId);
+            try
+            {
+                crypter.AddUser(userId);
+            }
+            catch(System.OperationCanceledException)
+            {
+                server.Disconnect(userId);
+            }
         }
 
         private void p_OnMessageSend(P2PClient sender, ulong userId, Memory<byte> msg)
@@ -72,7 +79,7 @@ namespace DiffieHellmanClient
 
         public IEnumerable<PackageInfo> GetAllMessages() => from m in messages select m;
 
-        public ulong AddConection(IPEndPoint toConnect) => Server.AddConnection(toConnect);
+        public ulong AddConnection(IPEndPoint toConnect) => Server.AddConnection(toConnect);
 
         public void Dispose()
         {

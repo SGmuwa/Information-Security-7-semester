@@ -119,24 +119,24 @@
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
   <data name="Vojna_i_mir__first_chapter" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\caesar\vojna i mir. first chapter.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+    <value>..\Caesar\Vojna i mir. first chapter.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
   <data name="Vojna_i_mir__first_chapter_ansi" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\caesar\vojna i mir. first chapter ansi.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1251</value>
+    <value>..\Caesar\Vojna i mir. first chapter ansi.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1251</value>
   </data>
   <data name="Vojna_i_mir__first_chapter_ansi_maximum" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\caesar\vojna i mir. first chapter ansi maximum.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1251</value>
+    <value>..\Caesar\Vojna i mir. first chapter ansi maximum.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1251</value>
   </data>
   <data name="Vojna_i_mir__Tom_1_2_3_4" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\caesar\vojna i mir. tom 1 2 3 4.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+    <value>..\Caesar\Vojna i mir. Tom 1 2 3 4.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
   <data name="Vojna_i_mir__Tom_1_2_3_4_ansi" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\caesar\vojna i mir. tom 1 2 3 4 ansi.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1251</value>
+    <value>..\Caesar\Vojna i mir. Tom 1 2 3 4 ansi.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1251</value>
   </data>
   <data name="Vojna_i_mir__Tom_1_2_3_4_ansi_maximum_clear" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\caesar\vojna i mir. tom 1 2 3 4 ansi maximum clear.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1251</value>
+    <value>..\Caesar\Vojna i mir. Tom 1 2 3 4 ansi maximum clear.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1251</value>
   </data>
   <data name="Хаббард_Рон_Лео" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\caesar\хаббард рон лео.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+    <value>..\Caesar\Хаббард Рон Лео.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
 </root>

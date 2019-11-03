@@ -24,7 +24,7 @@ namespace DiffieHellmanClient.Commands
             }
             if (IPEndPoint.TryParse(args[0], out IPEndPoint result))
             {
-                provider.mySystem.AddConection(result);
+                provider.mySystem.AddConnection(result);
                 return;
             }
             else

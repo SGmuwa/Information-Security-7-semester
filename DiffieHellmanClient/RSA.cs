@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Text;
 using static Prime_number_generator.Generator;
 
 namespace DiffieHellmanClient
@@ -33,7 +32,12 @@ namespace DiffieHellmanClient
 
         }
 
-        private BigInteger GetE(BigInteger ph)
+		private byte[] Read(ulong client)
+		{
+			throw new NotImplementedException();
+		}
+
+		private BigInteger GetE(BigInteger ph)
         {
             BigInteger output;
             do

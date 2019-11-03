@@ -5,10 +5,8 @@ using System.Threading;
 using System.Timers;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
-using System.Threading.Tasks;
 using System.Linq;
 using System.Collections;
-using System.Text;
 using System.IO;
 
 namespace DiffieHellmanClient
@@ -63,14 +61,32 @@ namespace DiffieHellmanClient
         public event Action<P2PClient, ulong> OnDisconnect;
 
         /// <summary>
+        /// Создаёт точку приёма пакетов со случайным портом.
+        /// </summary>
+        /// <param name="nameServer">Название сервера. Используется для метода <see cref="ToString"/>.</param>
+        /// <returns>Созданный экземпляр.</returns>
+        public P2PClient(string nameServer = default)
+        {
+
+            TcpListener = new TcpListener(IPAddress.Any, 0);
+            TcpListener.Start();
+            timerRemoverConnecterReader.Elapsed += TimerListener;
+            timerRemoverConnecterReader.Start();
+            if (nameServer == default)
+                nameServer = GetHashCode().ToString();
+            this.nameServer = nameServer;
+        }
+
+        /// <summary>
         /// Создать точку приёма пакетов.
         /// </summary>
         /// <param name="port">Порт, который будет прослушиваться и из которого будут идти пакеты.</param>
+        /// <param name="nameServer">Название сервера. Используется для метода <see cref="ToString"/>.</param>
         public P2PClient(ushort port, string nameServer = default)
         {
             TcpListener = new TcpListener(IPAddress.Any, port);
             TcpListener.Start();
-            timerRemoverConnecterReader.Elapsed += TimerListner;
+            timerRemoverConnecterReader.Elapsed += TimerListener;
             timerRemoverConnecterReader.Start();
             if (nameServer == default)
                 nameServer = GetHashCode().ToString();
@@ -78,6 +94,8 @@ namespace DiffieHellmanClient
         }
 
         public bool IsLive => timerRemoverConnecterReader.Enabled;
+
+        public IPEndPoint LocalEndPoint => (IPEndPoint)TcpListener.Server.LocalEndPoint;
 
         public ulong AddConnection(IPEndPoint toConnect)
         {
@@ -191,7 +209,7 @@ namespace DiffieHellmanClient
         }
 
 
-        private void TimerListner(object sender, ElapsedEventArgs args)
+        private void TimerListener(object sender, ElapsedEventArgs args)
         {
             AcceptConnections();
             RemoveOffline();

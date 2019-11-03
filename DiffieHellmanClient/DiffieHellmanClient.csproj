@@ -1,16 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.0</TargetFramework>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Prime number generator\Prime number generator.csproj" />
+    <Content Include="Businesslogic.cs" />
+    <Content Include="RSA.cs" />
+    <Content Include="P2PClient.cs" />
+    <Content Include="Crypter.cs" />
+    <Content Include="ICrypter.cs" />
+    <Content Include="PackageInfo.cs" />
+    <Content Include="Program.cs" />
+    <Content Include="Commands\AddConnection.cs" />
+    <Content Include="Commands\AbstractCommand.cs" />
+    <Content Include="Commands\CommandsProvider.cs" />
+    <Content Include="Commands\DebugMessages.cs" />
+    <Content Include="Commands\Exit.cs" />
+    <Content Include="Commands\Help.cs" />
+    <Content Include="Commands\History.cs" />
+    <Content Include="Commands\ReadAllMessages.cs" />
+    <Content Include="Commands\Result.cs" />
+    <Content Include="Commands\SearchRecommendations.cs" />
+    <Content Include="Commands\SendAll.cs" />
+    <Content Include="Commands\SetLocalPort.cs" />
   </ItemGroup>
-
 </Project>
