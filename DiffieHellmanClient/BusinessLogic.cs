@@ -37,7 +37,7 @@ namespace DiffieHellmanClient
         {
             Server?.Dispose();
             Server = thisServer;
-            crypter = new Crypter(Server);
+            crypter = new RSA(Server);
             Server.OnDebugMessage += str => OnDebugMessage?.Invoke(this, str);
             Server.OnMessageSend += p_OnMessageSend;
             Server.OnConnect += p_OnConnection;
@@ -61,10 +61,13 @@ namespace DiffieHellmanClient
         {
             if (crypter.IsConnectionSafe(userId, msg))
             {
-                msg = crypter.Decrypt(userId, msg);
-                dynamic json = JsonConvert.DeserializeObject(Encoding.UTF8.GetString(msg.Span));
-                messages.Push(new PackageInfo(json, userId));
-                OnMessageSend?.Invoke(this, userId, messages.Peek());
+                Memory<byte> deMsg = crypter.Decrypt(userId, msg);
+                if(deMsg.Length > 0)
+                {
+                    dynamic json = JsonConvert.DeserializeObject(Encoding.UTF8.GetString(deMsg.Span));
+                    messages.Push(new PackageInfo(json, userId));
+                    OnMessageSend?.Invoke(this, userId, messages.Peek());
+                }
             }
         }
 

@@ -17,6 +17,7 @@ namespace UnitTestProject1
         [TestMethod]
         public void Test1()
         {
+            Console.WriteLine("AAAAAAAAAAAAA");
             using BusinessLogic Program1 = new BusinessLogic();
             P2PClient server1 = new P2PClient("Источник");
             Program1.InitServer(server1);

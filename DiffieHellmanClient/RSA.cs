@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
-using Prime_number_generator;
 using static Prime_number_generator.Generator;
 
 namespace DiffieHellmanClient
@@ -40,46 +39,54 @@ namespace DiffieHellmanClient
             local.N = p * q;
             BigInteger ph = (p - 1) * (q - 1);
             local.E = GetE(ph);
-            local.D = BigInteger.ModPow(local.E, -1, ph);
+            local.D = GreatestCommonDivisor(local.E, ph); // https://neerc.ifmo.ru/wiki/index.php?title=RSA Число d называется секретной экспонентой. Обычно, оно вычисляется при помощи расширенного алгоритма Евклида.
             server.Write(client, local.E.ToByteArray());
             server.Write(client, local.N.ToByteArray());
             PSKey remote = default;
-            remote.E = new BigInteger(wr.Read(client), isUnsigned: true);
-            remote.N = new BigInteger(wr.Read(client), isUnsigned: true);
+            remote.E = new BigInteger(wr.Read(client).ToArray(), isUnsigned: true);
+            remote.N = new BigInteger(wr.Read(client).ToArray(), isUnsigned: true);
             users.Add(client, (local, remote));
         }
 
-		private BigInteger GetE(BigInteger ph)
+        private BigInteger GetE(BigInteger ph)
         {
             BigInteger output;
             do
             {
-                output = GenerateRandomBits(COUNT_BITS / 2) | 1;
-                output |= BigInteger.One << (COUNT_BITS / 2 - 1);
-            } while (!IsCoprime(output, ph));
+                output = TakePrime();
+            } while(ph % output == 0);
             return output;
         }
 
-        public static bool IsCoprime(BigInteger a, BigInteger b)
+        private BigInteger GreatestCommonDivisor(BigInteger a, BigInteger b)
         {
-            if(a == 0 || b == 0)
-                return false;
-            while(a != b)
-            {
-                if(a > b)
-                    a -= b;
+            while (a != 0 && b != 0)
+                if (a > b)
+                    a %= b;
                 else
-                    b -= a;
-            }
-            return a == 1;
+                    b %= a;
+            return a == 0 ? b : a;
         }
 
         public Memory<byte> Decrypt(ulong client, Memory<byte> msg)
         {
             if(users.TryGetValue(client, out var localRemote))
             {
-                BigInteger c = new BigInteger(msg.Span, isUnsigned: true);
-                return BigInteger.ModPow(c, localRemote.Item1.D, localRemote.Item1.N).ToByteArray();
+                List<byte> input = new List<byte>(msg.Length);
+                int oldI;
+                int i = 0;
+                do
+                {
+                    oldI = i;
+                    i += localRemote.Item1.N.GetByteCount() - 1;
+                    if(i > msg.Length)
+                        i = msg.Length;
+                    BigInteger c = new BigInteger(msg.Span.Slice(oldI, i - oldI), isUnsigned: true);
+                    if(c > localRemote.Item1.N)
+                        throw new Exception($"Message too big! c >= N! ({c} >= {localRemote.Item1.N})");
+                    input.AddRange(CreateEnumerableFixSize(BigInteger.ModPow(c, localRemote.Item1.D, localRemote.Item1.N).ToByteArray(), localRemote.Item2.N.GetByteCount()));
+                } while(i < msg.Length);
+                return input.ToArray();
             }
             else throw new Exception("Connection not safe!");
         }
@@ -88,15 +95,41 @@ namespace DiffieHellmanClient
         {
             if(users.TryGetValue(client, out var localRemote))
             {
-                BigInteger m = new BigInteger(msg.Span, isUnsigned: true);
-                if(m > localRemote.Item2.N)
-                    throw new Exception($"Message too big! m >= N! ({m} >= {localRemote.Item2.N})");
-                return BigInteger.ModPow(m, localRemote.Item2.E, localRemote.Item2.N).ToByteArray();
+                List<byte> output = new List<byte>(msg.Length);
+                int oldI;
+                int i = 0;
+                do
+                {
+                    oldI = i;
+                    i += localRemote.Item2.N.GetByteCount() - 1;
+                    if(i > msg.Length)
+                        i = msg.Length;
+                    BigInteger m = new BigInteger(msg.Span.Slice(oldI, i - oldI), isUnsigned: true);
+                    if(m > localRemote.Item2.N)
+                        throw new Exception($"Message too big! m >= N! ({m} >= {localRemote.Item2.N})");
+                    output.AddRange(CreateEnumerableFixSize(BigInteger.ModPow(m, localRemote.Item2.E, localRemote.Item2.N).ToByteArray(), localRemote.Item2.N.GetByteCount()));
+                } while(i < msg.Length);
+                return output.ToArray();
             }
             else throw new Exception("Connection not safe!");
         }
 
-        public bool IsConnectionSafe(ulong client, Memory<byte> message)
+        /// <summary>
+        /// Создаёт набор фиксированного размера.
+        /// </summary>
+		private static IEnumerable<T> CreateEnumerableFixSize<T>(IEnumerable<T> array, long needLength, T toDefault = default)
+		{
+            IEnumerator<T> a = array.GetEnumerator();
+            while(needLength-- != 0)
+            {
+                if(a.MoveNext())
+                    yield return a.Current;
+                else
+                    yield return toDefault;
+            }
+		}
+
+		public bool IsConnectionSafe(ulong client, Memory<byte> message)
             => users.ContainsKey(client);
 
         /// <summary>
@@ -109,9 +142,9 @@ namespace DiffieHellmanClient
             Task.Run(() =>
             {
                 BigInteger insert;
-                while(Prepared.Count < 6)
+                while(Prepared.Count < 9)
                 {
-                    insert = Generator.GenerateRandomPrime(COUNT_BITS, isNeedSleep: Prepared.Count != 0);
+                    insert = GenerateRandomPrime(COUNT_BITS, isNeedSleep: Prepared.Count != 0);
                     Prepared.Add(insert);
                 }
             }).ConfigureAwait(false);
@@ -131,9 +164,9 @@ namespace DiffieHellmanClient
             public BigInteger E { get; set; }
             public BigInteger N { get; set; }
 
-			public BigInteger D { get; set;}
+            public BigInteger D { get; set;}
 
-			public BigInteger PublicKey => E + (N << E.GetByteCount());
+            public BigInteger PublicKey => E + (N << E.GetByteCount());
             public BigInteger SecretKey => D + (N << D.GetByteCount());
 
             public PSKey(BigInteger e, BigInteger n, BigInteger d)
