@@ -86,7 +86,7 @@ namespace Prime_number_generator
                 output = GenerateRandomBits((uint)countBits);
                 output |= 1;
                 output |= BigInteger.One << (countBits - 1);
-            } while (!IsPrimePosible(output));
+            } while (!IsPrimePossible(output));
             return output;
         }
 
@@ -174,7 +174,7 @@ namespace Prime_number_generator
             }
         }
 
-        private static bool IsPrimePosible(BigInteger output)
+        private static bool IsPrimePossible(BigInteger output)
         {
             using CancellationTokenSource tkSource = new CancellationTokenSource();
             try

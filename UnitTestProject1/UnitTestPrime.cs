@@ -5,8 +5,8 @@ using System.Numerics;
 using System;
 using System.Threading.Tasks;
 using System.Diagnostics;
-using System.Collections.Concurrent;
 using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace UnitTestProject1
 {
@@ -41,7 +41,7 @@ namespace UnitTestProject1
         [DataRow(500, 16)]
         [DataRow(5, 50)]
         [DataRow(2, 128)]
-        [DataRow(1, 1024*4)]
+        [DataRow(1, 1024*2)]
         public void GenerateRandomPrime(int countTry, int countBits)
         {
             Console.WriteLine("Проверьте на простые числа:");
@@ -54,8 +54,37 @@ namespace UnitTestProject1
                 using CancellationTokenSource tokenSource = new CancellationTokenSource();
                 tokenSource.CancelAfter(7000);
                 try { Assert.IsTrue(Generator.IsPrimeSlow(gen, tokenSource.Token)); }
-                catch (OperationCanceledException) { Process.Start("explorer.exe", $"\"{url}\""); }
+                catch (OperationCanceledException) { OpenUrl(url); }
             });
+        }
+
+        private static void OpenUrl(string url)
+        {
+            try
+            {
+                Process.Start(url);
+            }
+            catch
+            {
+                // hack because of this: https://github.com/dotnet/corefx/issues/10361
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    url = url.Replace("&", "^&");
+                    Process.Start(new ProcessStartInfo("cmd", $"/c start {url}") { CreateNoWindow = true });
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    Process.Start("xdg-open", url);
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    Process.Start("open", url);
+                }
+                else
+                {
+                    throw;
+                }
+            }
         }
     }
 }

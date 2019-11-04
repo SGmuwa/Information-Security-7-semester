@@ -12,11 +12,19 @@ namespace DiffieHellmanClient
     public class Crypter : ICrypter
     {
         private readonly P2PClient server;
-
-        private static readonly TimeSpan timeout = TimeSpan.FromMinutes(2);
-
-        private static SimpleWriterReader wr;
-
+        /// <summary>
+        /// Сколько давать времени на генерацию одного ключа.
+        /// Если за это время не сгенерируется, то начинается процесс по-новой.
+        /// </summary>
+        public TimeSpan TimeoutGenerateKey { get; set; } = TimeSpan.FromSeconds(15);
+        /// <summary>
+        /// Сколько ждать ответа от собеседника.
+        /// </summary>
+        public TimeSpan TimeoutConnection { get; set; } = TimeSpan.FromMinutes(4);
+        /// <summary>
+        /// Длина генерируемых ключей. Рекомендуется 1024.
+        /// Максимальное число при заданной длине вычисляется: максимальное число = pow(2, длина).
+        /// </summary>
         private const ushort COUNT_PRIME_BITS = 80; // Рекомендуется 1024
 
         public Crypter(P2PClient server)
@@ -24,12 +32,6 @@ namespace DiffieHellmanClient
             UpdatePG();
             this.server = server;
             server.OnDisconnect += OnClientDisconnect;
-        }
-
-        ~Crypter()
-        {
-            if (server != null)
-                server.OnDisconnect -= OnClientDisconnect;
         }
 
         /// <summary>
@@ -43,11 +45,6 @@ namespace DiffieHellmanClient
         private readonly ConcurrentDictionary<ulong, Memory<byte>> users = new ConcurrentDictionary<ulong, Memory<byte>>();
 
         /// <summary>
-        /// База сообщений для каждого пользователя.
-        /// </summary>
-        private readonly ConcurrentDictionary<ulong, BlockingCollection<Memory<byte>>> Messages = new ConcurrentDictionary<ulong, BlockingCollection<Memory<byte>>>();
-
-        /// <summary>
         /// Вычисления, которые сделаны заранее.
         /// </summary>
         private readonly BlockingCollection<PG> Prepared = new BlockingCollection<PG>();
@@ -57,14 +54,15 @@ namespace DiffieHellmanClient
         public void AddUser(ulong client)
         {
             // Договариваемся, кто генерирует p и g.
+            using SimpleWriterReader wr = new SimpleWriterReader(server, TimeoutConnection);
             byte arrangement;
             Memory<byte> buffer;
             BigInteger a;
             Task<BigInteger> a_task = Task.Run(() => Generator.GenerateRandomPrime(COUNT_PRIME_BITS / 4));
             do {
                 arrangement = (byte)ran.Next(byte.MinValue, byte.MaxValue); // Договорённость.
-                server.Write(client, new Memory<byte>(new byte[] { arrangement }));
-                buffer = Read(client);
+                wr.Write(client, new Memory<byte>(new byte[] { arrangement }));
+                buffer = wr.Read(client);
                 if (buffer.Length > 1)
                     throw new Exception("Не совпадает протокол. " + string.Join(", ", buffer));
             } while (arrangement == buffer.Span[0]);
@@ -79,19 +77,19 @@ namespace DiffieHellmanClient
                 sw.Reset();
                 p = pg.P;
                 g = pg.G;
-                server.Write(client, p.ToByteArray());
-                server.Write(client, g.ToByteArray());
+                wr.Write(client, p.ToByteArray());
+                wr.Write(client, g.ToByteArray());
             }
             else
             {
-                p = new BigInteger(Read(client).ToArray());
-                g = new BigInteger(Read(client).ToArray());
+                p = new BigInteger(wr.Read(client).ToArray());
+                g = new BigInteger(wr.Read(client).ToArray());
             }
             a_task.Wait();
             a = a_task.Result;
             BigInteger A = BigInteger.ModPow(g, a, p);
-            server.Write(client, A.ToByteArray());
-            BigInteger B = new BigInteger(Read(client).ToArray());
+            wr.Write(client, A.ToByteArray());
+            BigInteger B = new BigInteger(wr.Read(client).ToArray());
             BigInteger K = BigInteger.ModPow(B, a, p);
             users[client] = new Memory<byte>(K.ToByteArray());
         }
@@ -113,21 +111,8 @@ namespace DiffieHellmanClient
         public Memory<byte> Encrypt(ulong client, Memory<byte> msg)
             => Decrypt(client, msg);
 
-        public bool IsConnectionSafe(ulong client, Memory<byte> message)
-        {
-            if (users.ContainsKey(client))
-                return true;
-            BlockingCollection<Memory<byte>> messagesUser = Messages.GetOrAdd(client, _ => new BlockingCollection<Memory<byte>>());
-            messagesUser.Add(message);
-            return false;
-        }
-
-        private Memory<byte> Read(ulong client)
-        {
-            using CancellationTokenSource tokenSource = new CancellationTokenSource(timeout);
-            BlockingCollection<Memory<byte>> messages = Messages.GetOrAdd(client, _ => new BlockingCollection<Memory<byte>>());
-            return messages.Take(tokenSource.Token);
-        }
+		public bool IsConnectionSafe(ulong client, Memory<byte> message)
+            => users.ContainsKey(client);
 
         private static IEnumerable<T> InfinityRepeat<T>(Memory<T> toRepeat)
         {
@@ -138,13 +123,14 @@ namespace DiffieHellmanClient
                     yield return toRepeat.Span[i];
         }
 
-        private void OnClientDisconnect(P2PClient server, ulong client)
-        {
-            users.TryRemove(client, out _);
-            Messages.TryRemove(client, out _);
-        }
+		private void OnClientDisconnect(P2PClient server, ulong client)
+            => users.TryRemove(client, out _);
 
-        private PG TakePrepared()
+		/// <summary>
+		/// Забирает готовый набор для генерации ключа.
+		/// </summary>
+		/// <returns>Сгенерированные сложные числа для Диффи-Хеллмана.</returns>
+		private PG TakePrepared()
         {
             UpdatePG();
             return Prepared.Take();
@@ -157,7 +143,7 @@ namespace DiffieHellmanClient
                 PG insert;
                 while(Prepared.Count < 3)
                 {
-                    CancellationTokenSource tokenSource = new CancellationTokenSource(timeout / 8);
+                    CancellationTokenSource tokenSource = new CancellationTokenSource(TimeoutGenerateKey);
                     try
                     {
                         insert.P = Generator.GenerateRandomPrime(COUNT_PRIME_BITS, tokenSource.Token, Prepared.Count != 0);
@@ -183,10 +169,10 @@ namespace DiffieHellmanClient
         private static BigInteger AntiderivativeRootModulo(BigInteger p, CancellationToken token = default, bool isNeedSleep = false)
         {
             List<BigInteger> fact = new List<BigInteger>(COUNT_PRIME_BITS / 4);
-            BigInteger phi = p - 1, n = phi, nsqrt = n.Sqrt();
+            BigInteger phi = p - 1, n = phi, nSqrt = n.Sqrt();
             Parallel.For(0, Environment.ProcessorCount, new ParallelOptions() { CancellationToken = token }, _ =>
             {
-                for (BigInteger i = 2 + _; i <= nsqrt; i += Environment.ProcessorCount)
+                for (BigInteger i = 2 + _; i <= nSqrt; i += Environment.ProcessorCount)
                 {
                     if (n % i == 0)
                     {
@@ -195,13 +181,15 @@ namespace DiffieHellmanClient
                             fact.Add(i);
                             do n /= i; while (n % i == 0);
                         }
-                        nsqrt = n.Sqrt();
+                        nSqrt = n.Sqrt();
                     }
                     if (isNeedSleep)
                         Thread.Sleep(0);
-                    token.ThrowIfCancellationRequested();
+                    if(token.IsCancellationRequested)
+                        return;
                 }
             });
+            token.ThrowIfCancellationRequested();
             if (n > 1)
                 fact.Add(n);
 
@@ -212,7 +200,7 @@ namespace DiffieHellmanClient
                     ok &= BigInteger.ModPow(res, phi / fact[i], p) != 1;
                 if (ok) return res;
                 if (isNeedSleep)
-                    Thread.Sleep(1);
+                    Thread.Sleep(0);
             }
             return -1;
         }

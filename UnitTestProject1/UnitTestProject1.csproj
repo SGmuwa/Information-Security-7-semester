@@ -29,5 +29,7 @@
     </EmbeddedResource>
     <Content Include="DiffieHellmanClient.cs" />
     <Content Include="Properties\Resources.resx" />
+    <Content Include="UnitTestPrime.cs" />
+    <Content Include="UnitTestCaesar.cs" />
   </ItemGroup>
 </Project>

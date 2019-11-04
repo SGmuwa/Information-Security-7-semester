@@ -4,6 +4,7 @@ using System.Net;
 using System.Linq;
 using Newtonsoft.Json;
 using System.Text;
+using System.Threading;
 
 namespace DiffieHellmanClient
 {
@@ -73,6 +74,9 @@ namespace DiffieHellmanClient
         public void Send(ulong userId, dynamic msg)
         {
             Memory<byte> info = new Memory<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(msg)));
+            int tryCount = 4000;
+            while(!crypter.IsConnectionSafe(userId, info) && tryCount-- > 0)
+                Thread.Sleep(1);
             info = crypter.Encrypt(userId, info);
             Server.Write(userId, info);
 
@@ -89,6 +93,9 @@ namespace DiffieHellmanClient
         public IEnumerable<PackageInfo> GetAllMessages() => from m in messages select m;
 
         public ulong AddConnection(IPEndPoint toConnect) => Server.AddConnection(toConnect);
+
+        public override string ToString()
+            => $"{nameof(Businesslogic)}: countMessages = {messages.Count}, server = {Server?.ToString()}";
 
         public void Dispose()
         {

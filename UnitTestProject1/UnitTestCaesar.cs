@@ -34,7 +34,7 @@ namespace UnitTestProject1
         [DataRow("Vojna_i_mir__first_chapter", 413, "Vojna_i_mir__Tom_1_2_3_4", 0.28, (int)get_all)]
         [DataRow("Vojna_i_mir__first_chapter", -124, "Vojna_i_mir__Tom_1_2_3_4", 0.45, (int)russian)]
         [DataRow("Vojna_i_mir__first_chapter", 32, "Vojna_i_mir__first_chapter", 0.993, (int)get_all)]
-        public void DecryptFromResurses(string inputName, int key, string sampleName, double accuracy, dynamic sup)
+        public void DecryptFromResources(string inputName, int key, string sampleName, double accuracy, dynamic sup)
         {
             LettersSetSettings((TypeLettersSupport)sup);
             string expect = Properties.Resources.ResourceManager.GetString(inputName);
