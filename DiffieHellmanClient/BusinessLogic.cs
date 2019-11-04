@@ -8,7 +8,7 @@ using System.Threading;
 
 namespace DiffieHellmanClient
 {
-    public class Businesslogic : IDisposable
+    public class BusinessLogic : IDisposable
     {
         private P2PClient Server = null;
         private ICrypter crypter;
@@ -17,21 +17,21 @@ namespace DiffieHellmanClient
         /// <summary>
         /// Происходит при получении сообщения от кого-либо.
         /// </summary>
-        public event Action<Businesslogic, ulong, dynamic> OnMessageSend;
+        public event Action<BusinessLogic, ulong, dynamic> OnMessageSend;
         /// <summary>
         /// Вызывается при отключении пользователя.
         /// </summary>
-        public event Action<Businesslogic, ulong> OnUserDisconnect;
+        public event Action<BusinessLogic, ulong> OnUserDisconnect;
         /// <summary>
         /// Вызывается при подключении пользователя.
         /// </summary>
-        public event Action<Businesslogic, ulong> OnUserConnect;
+        public event Action<BusinessLogic, ulong> OnUserConnect;
         /// <summary>
         /// Происходит при попытке <see cref="P2PClient"/> сообщить подробности об процессе.
         /// </summary>
-        public event Action<Businesslogic, string> OnDebugMessage;
+        public event Action<BusinessLogic, string> OnDebugMessage;
 
-        public Businesslogic() { }
+        public BusinessLogic() { }
 
         public void InitServer(P2PClient thisServer)
         {
@@ -95,7 +95,7 @@ namespace DiffieHellmanClient
         public ulong AddConnection(IPEndPoint toConnect) => Server.AddConnection(toConnect);
 
         public override string ToString()
-            => $"{nameof(Businesslogic)}: countMessages = {messages.Count}, server = {Server?.ToString()}";
+            => $"{nameof(BusinessLogic)}: countMessages = {messages.Count}, server = {Server?.ToString()}";
 
         public void Dispose()
         {

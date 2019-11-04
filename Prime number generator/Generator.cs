@@ -14,7 +14,7 @@ namespace Prime_number_generator
 
         private enum FlagType
         {
-            Unknow,
+            Unknown,
             Prime,
             NotPrime
         }
@@ -38,8 +38,8 @@ namespace Prime_number_generator
                 if (current > max)
                     break;
                 if (!output.ContainsKey(current))
-                    output[current] = FlagType.Unknow;
-                if (output[current] == FlagType.Unknow)
+                    output[current] = FlagType.Unknown;
+                if (output[current] == FlagType.Unknown)
                 {
                     output[current] = FlagType.Prime;
                     for (dynamic i = (T)(current + current); i <= max && i >= current; i = (T)(i + current))

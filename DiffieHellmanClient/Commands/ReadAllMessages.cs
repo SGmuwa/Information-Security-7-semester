@@ -32,7 +32,7 @@ namespace DiffieHellmanClient.Commands
             }
         }
 
-        private void OnMessageSend(Businesslogic server, ulong client, dynamic message)
+        private void OnMessageSend(BusinessLogic server, ulong client, dynamic message)
             => Console.WriteLine(MsgToString(message));
 
         private string MsgToString(PackageInfo msg)

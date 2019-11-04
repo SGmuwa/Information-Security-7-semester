@@ -31,7 +31,7 @@ namespace DiffieHellmanClient.Commands
             }
         }
 
-        private void OnDebugMessage(Businesslogic sender, string arg)
+        private void OnDebugMessage(BusinessLogic sender, string arg)
         {
             provider.Print(arg);
         }

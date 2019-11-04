@@ -10,14 +10,14 @@ namespace DiffieHellmanClient.Commands
 {
     class CommandsProvider : IEnumerable<AbstractCommand>
     {
-        public readonly Businesslogic mySystem;
+        public readonly BusinessLogic mySystem;
         private readonly History<string> history
             = new History<string>();
 
-        public CommandsProvider(Businesslogic mySystem = null)
+        public CommandsProvider(BusinessLogic mySystem = null)
         {
             if (mySystem == null)
-                mySystem = new Businesslogic();
+                mySystem = new BusinessLogic();
             this.mySystem = mySystem;
             commands = new ReadOnlyCollection<AbstractCommand>(new AbstractCommand[]
             {

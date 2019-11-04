@@ -17,10 +17,10 @@ namespace UnitTestProject1
         [TestMethod]
         public void Test1()
         {
-            using Businesslogic Program1 = new Businesslogic();
+            using BusinessLogic Program1 = new BusinessLogic();
             P2PClient server1 = new P2PClient("Источник");
             Program1.InitServer(server1);
-            using Businesslogic Program2 = new Businesslogic();
+            using BusinessLogic Program2 = new BusinessLogic();
             P2PClient server2 = new P2PClient("Приёмщик");
             Program2.InitServer(server2);
             Stopwatch sw = new Stopwatch();
@@ -40,7 +40,7 @@ namespace UnitTestProject1
             Console.WriteLine(sw.Elapsed);
             return;
 
-            void Program2_OnMessageSend(Businesslogic arg1, ulong arg2, dynamic arg3)
+            void Program2_OnMessageSend(BusinessLogic arg1, ulong arg2, dynamic arg3)
             {
                 PackageInfo[] messages = Program2.GetAllMessages().ToArray();
                 Assert.AreEqual(1, messages.Length);
