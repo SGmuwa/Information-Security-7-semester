@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
+using Prime_number_generator;
 using static Prime_number_generator.Generator;
 
 namespace DiffieHellmanClient
@@ -21,7 +22,7 @@ namespace DiffieHellmanClient
         /// </summary>
         public TimeSpan TimeoutConnection { get; set; } = TimeSpan.FromMinutes(4);
 
-        private const int COUNT_BITS = 16;
+        private const int COUNT_BITS = 80;
 
         /// <summary>
         /// Таблица ключей. Соответствие идентификатора пользователя с классом...
@@ -67,7 +68,7 @@ namespace DiffieHellmanClient
         { // http://altaev-aa.narod.ru/security/Rsa.html http://altaev-aa.narod.ru/security/images/im7.png
             BigInteger Numerator = 1;
             BigInteger Denominator = e;
-            BigInteger r = ph%e;
+            BigInteger r = ph;
             do
             {
                 Numerator += r;
