@@ -72,21 +72,18 @@ namespace DiffieHellmanClient
         {
             if(users.TryGetValue(client, out var localRemote))
             {
-                List<byte> input = new List<byte>(msg.Length);
-                int oldI;
+                List<byte> output = new List<byte>(msg.Length);
                 int i = 0;
                 do
                 {
-                    oldI = i;
-                    i += localRemote.Item1.N.GetByteCount() - 1;
-                    if(i > msg.Length)
-                        i = msg.Length;
-                    BigInteger c = new BigInteger(msg.Span.Slice(oldI, i - oldI), isUnsigned: true);
+                    int size = BitConverter.ToInt32(msg.Span.Slice(i, 4)); i += 4;
+                    BigInteger c = new BigInteger(msg.Span.Slice(i, size), isUnsigned: true);
                     if(c > localRemote.Item1.N)
                         throw new Exception($"Message too big! c >= N! ({c} >= {localRemote.Item1.N})");
-                    input.AddRange(CreateEnumerableFixSize(BigInteger.ModPow(c, localRemote.Item1.D, localRemote.Item1.N).ToByteArray(), localRemote.Item2.N.GetByteCount()));
+                    output.AddRange(BigInteger.ModPow(c, localRemote.Item1.D, localRemote.Item1.N).ToByteArray());
+                    i += size;
                 } while(i < msg.Length);
-                return input.ToArray();
+                return output.ToArray();
             }
             else throw new Exception("Connection not safe!");
         }
@@ -107,27 +104,14 @@ namespace DiffieHellmanClient
                     BigInteger m = new BigInteger(msg.Span.Slice(oldI, i - oldI), isUnsigned: true);
                     if(m > localRemote.Item2.N)
                         throw new Exception($"Message too big! m >= N! ({m} >= {localRemote.Item2.N})");
-                    output.AddRange(CreateEnumerableFixSize(BigInteger.ModPow(m, localRemote.Item2.E, localRemote.Item2.N).ToByteArray(), localRemote.Item2.N.GetByteCount()));
+                    byte[] result = BigInteger.ModPow(m, localRemote.Item2.E, localRemote.Item2.N).ToByteArray();
+                    output.AddRange(BitConverter.GetBytes(result.Length));
+                    output.AddRange(result);
                 } while(i < msg.Length);
                 return output.ToArray();
             }
             else throw new Exception("Connection not safe!");
         }
-
-        /// <summary>
-        /// Создаёт набор фиксированного размера.
-        /// </summary>
-		private static IEnumerable<T> CreateEnumerableFixSize<T>(IEnumerable<T> array, long needLength, T toDefault = default)
-		{
-            IEnumerator<T> a = array.GetEnumerator();
-            while(needLength-- != 0)
-            {
-                if(a.MoveNext())
-                    yield return a.Current;
-                else
-                    yield return toDefault;
-            }
-		}
 
 		public bool IsConnectionSafe(ulong client, Memory<byte> message)
             => users.ContainsKey(client);
