@@ -17,7 +17,6 @@ namespace UnitTestProject1
         [TestMethod]
         public void Test1()
         {
-            Console.WriteLine("AAAAAAAAAAAAA");
             using BusinessLogic Program1 = new BusinessLogic();
             P2PClient server1 = new P2PClient("Источник");
             Program1.InitServer(server1);
@@ -29,16 +28,19 @@ namespace UnitTestProject1
             Program2.OnDebugMessage += (a, b) => Console.WriteLine($"{Program2.ToString()}: [{sw.Elapsed}] {b}");
             sw.Start();
             ulong From1To2 = Program1.AddConnection(server2.LocalEndPoint);
-            var toSend = new { Type = "msg", Message = new string('a', 128) };
+            var toSend = new { Type = "msg", Message = "t" };
             Program1.Send(From1To2, toSend);
             Program2.OnMessageSend += Program2_OnMessageSend;
             try
             {
-                Task.Run(() => { while (!tokenSource.IsCancellationRequested) Thread.Sleep(5); }).Wait(tokenSource.Token);
+                //Task.Run(() => { while (!tokenSource.IsCancellationRequested) Thread.Sleep(5); }).Wait(tokenSource.Token);
             }
             catch { }
             sw.Stop();
             Console.WriteLine(sw.Elapsed);
+            Thread.Sleep(200);
+            Program1.Dispose(); Program2.Dispose(); server1.Dispose(); server2.Dispose();
+            Assert.Fail();
             return;
 
             void Program2_OnMessageSend(BusinessLogic arg1, ulong arg2, dynamic arg3)
