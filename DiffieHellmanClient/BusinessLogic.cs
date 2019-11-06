@@ -37,7 +37,7 @@ namespace DiffieHellmanClient
         {
             Server?.Dispose();
             Server = thisServer;
-            crypter = new RSA(Server);
+            crypter = new RSA(Server, 768);
             Server.OnDebugMessage += str => OnDebugMessage?.Invoke(this, str);
             Server.OnMessageSend += p_OnMessageSend;
             Server.OnConnect += p_OnConnection;

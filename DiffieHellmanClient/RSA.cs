@@ -2,8 +2,8 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
-using Prime_number_generator;
 using static Prime_number_generator.Generator;
 
 namespace DiffieHellmanClient
@@ -53,21 +53,28 @@ namespace DiffieHellmanClient
             BigInteger output;
             do
             {
-                output = GenerateRandomPrime(CountBits / 4, isNeedSleep: true);
+                output = GenerateRandomPrime(20, isNeedSleep: true);
             } while(ph % output == 0);
             return output;
         }
 
         private BigInteger SearchD(BigInteger e, BigInteger ph)
         { // http://altaev-aa.narod.ru/security/Rsa.html http://altaev-aa.narod.ru/security/images/im7.png
-            BigInteger Numerator = 1;
-            BigInteger Denominator = e;
-            BigInteger r = ph;
-            do
+            BigInteger output = BigInteger.Zero;
+            Parallel.For(0, Environment.ProcessorCount, (i) =>
             {
-                Numerator += r;
-            } while(Numerator % Denominator != 0);
-            return Numerator / Denominator;
+                BigInteger Denominator = e;
+                BigInteger r = ph * Environment.ProcessorCount;
+                BigInteger Numerator = 1 + i * r;
+                do
+                {
+                    Numerator += r;
+                    Thread.Sleep(0);
+                } while(Numerator % Denominator != 0 && output.IsZero);
+                if(output.IsZero)
+                    output = Numerator / Denominator;
+            });
+            return output;
         }
 
         public Memory<byte> Decrypt(ulong client, Memory<byte> msg)
@@ -84,7 +91,7 @@ namespace DiffieHellmanClient
                     if(c > localRemote.Item1.N)
                         throw new Exception($"Message too big! c >= N! ({c} >= {localRemote.Item1.N})");
                     Memory<byte> toAdd = BigInteger.ModPow(c, localRemote.Item1.D, localRemote.Item1.N).ToByteArray();
-                    output.AddRange(toAdd.Span.Slice(0, toAdd.Span[^1] == 0 ? toAdd.Length - 1 : toAdd.Length).ToArray());
+                    output.AddRange(toAdd.Span.Slice(1, toAdd.Span[^1] == 0 ? toAdd.Length - 2 : toAdd.Length - 1).ToArray());
                     i += size;
                 } while(i < msg.Length);
                 return output.ToArray();
@@ -92,11 +99,13 @@ namespace DiffieHellmanClient
             else throw new Exception("Connection not safe!");
         }
 
+        private Random ran = new Random();
+
         public Memory<byte> Encrypt(ulong client, Memory<byte> msg)
         {
             if(users.TryGetValue(client, out var localRemote))
             {
-                if(localRemote.Item2.N.GetByteCount() <= 1)
+                if(localRemote.Item2.N.GetByteCount() <= 2)
                     throw new Exception("Слишком маленькое N.");
                 List<byte> output = new List<byte>(msg.Length);
                 Int32 oldI;
@@ -104,12 +113,13 @@ namespace DiffieHellmanClient
                 do
                 {
                     oldI = i;
-                    i += localRemote.Item2.N.GetByteCount() - 1;
+                    i += localRemote.Item2.N.GetByteCount() - 2;
                     if(i > msg.Length)
                         i = msg.Length;
                     BigInteger m = new BigInteger(msg.Span.Slice(oldI, i - oldI), isUnsigned: true);
                     if(m > localRemote.Item2.N)
                         throw new Exception($"Message too big! m >= N! ({m} >= {localRemote.Item2.N})");
+                    m = (m << 8) | ran.Next(byte.MinValue, byte.MaxValue);
                     byte[] result = BigInteger.ModPow(m, localRemote.Item2.E, localRemote.Item2.N).ToByteArray();
                     output.AddRange(BitConverter.GetBytes(result.Length));
                     output.AddRange(result);
@@ -126,22 +136,26 @@ namespace DiffieHellmanClient
         /// Коллекция, в которой хранятся готовые подготовленные числа.
         /// </summary>
         private readonly BlockingCollection<PQED> Prepared = new BlockingCollection<PQED>();
+        private readonly object sync = new object();
 
         private void UpdatePQED()
         {
             Task.Run(() =>
             {
                 PQED insert = default;
-                while(Prepared.Count < 2)
+                lock(sync)
                 {
-                    Parallel.Invoke(
-                        () => insert.P = GenerateRandomPrime(CountBits, isNeedSleep: true),
-                        () => insert.Q = GenerateRandomPrime(CountBits, isNeedSleep: true)
-                    );
-                    BigInteger ph = (insert.P - 1) * (insert.Q - 1);
-                    insert.E = GetE(ph);
-                    insert.D = SearchD(insert.E, ph);
-                    Prepared.Add(insert);
+                    while(Prepared.Count < 2)
+                    {
+                        Parallel.Invoke(
+                            () => insert.P = GenerateRandomPrime(CountBits, isNeedSleep: true),
+                            () => insert.Q = GenerateRandomPrime(CountBits, isNeedSleep: true)
+                        );
+                        BigInteger ph = (insert.P - 1) * (insert.Q - 1);
+                        insert.E = GetE(ph);
+                        insert.D = SearchD(insert.E, ph);
+                        Prepared.Add(insert);
+                    }
                 }
             }).ConfigureAwait(false);
         }
