@@ -9,7 +9,7 @@ using Prime_number_generator;
 
 namespace DiffieHellmanClient
 {
-    public class Crypter : ICrypter
+    public class DiffieHellmanCrypter : ICrypter
     {
         private readonly P2PClient server;
         /// <summary>
@@ -22,13 +22,14 @@ namespace DiffieHellmanClient
         /// </summary>
         public TimeSpan TimeoutConnection { get; set; } = TimeSpan.FromMinutes(4);
         /// <summary>
-        /// Длина генерируемых ключей. Рекомендуется 1024.
+        /// Длина генерируемых ключей. Рекомендуется 2048...4096.
         /// Максимальное число при заданной длине вычисляется: максимальное число = pow(2, длина).
         /// </summary>
-        private const ushort COUNT_PRIME_BITS = 80; // Рекомендуется 1024
+        private readonly ushort CountPrimeBits;
 
-        public Crypter(P2PClient server)
+        public DiffieHellmanCrypter(P2PClient server, ushort countPrimeBits = 2048)
         {
+            CountPrimeBits = countPrimeBits;
             UpdatePG();
             this.server = server;
             server.OnDisconnect += OnClientDisconnect;
@@ -58,7 +59,7 @@ namespace DiffieHellmanClient
             byte arrangement;
             Memory<byte> buffer;
             BigInteger a;
-            Task<BigInteger> a_task = Task.Run(() => Generator.GenerateRandomPrime(COUNT_PRIME_BITS / 4));
+            Task<BigInteger> a_task = Task.Run(() => Generator.GenerateRandomPrime(CountPrimeBits / 4));
             do {
                 arrangement = (byte)ran.Next(byte.MinValue, byte.MaxValue); // Договорённость.
                 wr.Write(client, new Memory<byte>(new byte[] { arrangement }));
@@ -146,7 +147,7 @@ namespace DiffieHellmanClient
                     CancellationTokenSource tokenSource = new CancellationTokenSource(TimeoutGenerateKey);
                     try
                     {
-                        insert.P = Generator.GenerateRandomPrime(COUNT_PRIME_BITS, tokenSource.Token, Prepared.Count != 0);
+                        insert.P = Generator.GenerateRandomPrime(CountPrimeBits, tokenSource.Token, Prepared.Count != 0);
                         insert.G = AntiderivativeRootModulo(insert.P, tokenSource.Token, Prepared.Count != 0);
                     }
                     catch
@@ -166,9 +167,9 @@ namespace DiffieHellmanClient
         /// <param name="p"></param>
         /// <returns></returns>
         /// <see cref="http://e-maxx.ru/algo/export_primitive_root"/>
-        private static BigInteger AntiderivativeRootModulo(BigInteger p, CancellationToken token = default, bool isNeedSleep = false)
+        private BigInteger AntiderivativeRootModulo(BigInteger p, CancellationToken token = default, bool isNeedSleep = false)
         {
-            List<BigInteger> fact = new List<BigInteger>(COUNT_PRIME_BITS / 4);
+            List<BigInteger> fact = new List<BigInteger>(CountPrimeBits / 4);
             BigInteger phi = p - 1, n = phi, nSqrt = n.Sqrt();
             Parallel.For(0, Environment.ProcessorCount, new ParallelOptions() { CancellationToken = token }, _ =>
             {

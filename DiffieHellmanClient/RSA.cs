@@ -10,8 +10,9 @@ namespace DiffieHellmanClient
 {
     class RSA : ICrypter
     {
-        public RSA(P2PClient server)
+        public RSA(P2PClient server, ushort countBits = 2048)
         {
+            this.CountBits = countBits;
             UpdatePQED();
             this.server = server ?? throw new ArgumentNullException();
         }
@@ -22,7 +23,7 @@ namespace DiffieHellmanClient
         /// </summary>
         public TimeSpan TimeoutConnection { get; set; } = TimeSpan.FromMinutes(4);
 
-        private const int COUNT_BITS = 80;
+        private readonly ushort CountBits;
 
         /// <summary>
         /// Таблица ключей. Соответствие идентификатора пользователя с классом...
@@ -52,7 +53,7 @@ namespace DiffieHellmanClient
             BigInteger output;
             do
             {
-                output = GenerateRandomPrime(COUNT_BITS / 4, isNeedSleep: true);
+                output = GenerateRandomPrime(CountBits / 4, isNeedSleep: true);
             } while(ph % output == 0);
             return output;
         }
@@ -134,8 +135,8 @@ namespace DiffieHellmanClient
                 while(Prepared.Count < 2)
                 {
                     Parallel.Invoke(
-                        () => insert.P = GenerateRandomPrime(COUNT_BITS, isNeedSleep: true),
-                        () => insert.Q = GenerateRandomPrime(COUNT_BITS, isNeedSleep: true)
+                        () => insert.P = GenerateRandomPrime(CountBits, isNeedSleep: true),
+                        () => insert.Q = GenerateRandomPrime(CountBits, isNeedSleep: true)
                     );
                     BigInteger ph = (insert.P - 1) * (insert.Q - 1);
                     insert.E = GetE(ph);

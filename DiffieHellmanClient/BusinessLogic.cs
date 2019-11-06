@@ -91,6 +91,14 @@ namespace DiffieHellmanClient
                 Send(userId, msg);
         }
 
+        public void SetCrypter(Func<P2PClient, ICrypter> newCrypter, bool needDisconnect = true)
+        {
+            crypter = newCrypter.Invoke(Server);
+            if(needDisconnect)
+                foreach(var i in Server)
+                    Server.Disconnect(i);
+        }
+
         public void Run() { }
 
         public IEnumerable<PackageInfo> GetAllMessages() => from m in messages select m;

@@ -27,7 +27,8 @@ namespace DiffieHellmanClient.Commands
                 new SendAll(this),
                 new AddConnection(this),
                 new ReadAllMessages(this),
-                new DebugMessages(this)
+                new DebugMessages(this),
+                new SetCrypter(this)
             });
         }
 

@@ -11,7 +11,6 @@
     <ProjectReference Include="..\Prime number generator\Prime number generator.csproj" />
     <Content Include="RSA.cs" />
     <Content Include="P2PClient.cs" />
-    <Content Include="Crypter.cs" />
     <Content Include="ICrypter.cs" />
     <Content Include="PackageInfo.cs" />
     <Content Include="Program.cs" />
@@ -29,5 +28,7 @@
     <Content Include="Commands\SetLocalPort.cs" />
     <Content Include="SimpleWriterReader.cs" />
     <Content Include="BusinessLogic.cs" />
+    <Content Include="Commands\SetCrypter.cs" />
+    <Content Include="DiffieHellmanCrypter.cs" />
   </ItemGroup>
 </Project>
