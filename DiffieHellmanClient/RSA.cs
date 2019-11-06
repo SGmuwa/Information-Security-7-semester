@@ -33,25 +33,18 @@ namespace DiffieHellmanClient
 
         public void AddUser(ulong client)
         {
-            client = 1;
             using SimpleWriterReader wr = new SimpleWriterReader(server, TimeoutConnection);
             PSKey local = default;
             PQED preLoad = TakePQED();
             local.N = preLoad.P * preLoad.Q;
             local.E = preLoad.E;
             local.D = preLoad.D;
-            //wr.Write(client, local.E.ToByteArray());
-            //wr.Write(client, local.N.ToByteArray());
-            PSKey remote = local;
-            //remote.E = new BigInteger(wr.Read(client).ToArray(), isUnsigned: true);
-            //remote.N = new BigInteger(wr.Read(client).ToArray(), isUnsigned: true);
+            wr.Write(client, local.E.ToByteArray());
+            wr.Write(client, local.N.ToByteArray());
+            PSKey remote = default;
+            remote.E = new BigInteger(wr.Read(client).ToArray(), isUnsigned: true);
+            remote.N = new BigInteger(wr.Read(client).ToArray(), isUnsigned: true);
             users.Add(client, (local, remote));
-            // return;
-            Memory<byte> start = new byte[]{3};
-            Memory<byte> encrypted = Encrypt(1, start);
-            Memory<byte> decrypted = Decrypt(1, encrypted);
-            string decryptedText = System.Text.Encoding.UTF8.GetString(decrypted.Span);
-            Console.WriteLine();
         }
 
         private BigInteger GetE(BigInteger ph)
@@ -81,15 +74,16 @@ namespace DiffieHellmanClient
             if(users.TryGetValue(client, out var localRemote))
             {
                 List<byte> output = new List<byte>(msg.Length);
-                int i = 0;
+                Int32 i = 0;
                 do
                 {
-                    int size = BitConverter.ToInt32(msg.Span.Slice(i, 4)); i += 4;
+                    Int32 size = BitConverter.ToInt32(msg.Span.Slice(i, 4));
+                    i += 4;
                     BigInteger c = new BigInteger(msg.Span.Slice(i, size), isUnsigned: true);
-                    #warning
-                    // if(c > localRemote.Item1.N)
-                    //     throw new Exception($"Message too big! c >= N! ({c} >= {localRemote.Item1.N})");
-                    output.AddRange(BigInteger.ModPow(c, localRemote.Item1.D, localRemote.Item1.N).ToByteArray());
+                    if(c > localRemote.Item1.N)
+                        throw new Exception($"Message too big! c >= N! ({c} >= {localRemote.Item1.N})");
+                    Memory<byte> toAdd = BigInteger.ModPow(c, localRemote.Item1.D, localRemote.Item1.N).ToByteArray();
+                    output.AddRange(toAdd.Span.Slice(0, toAdd.Span[^1] == 0 ? toAdd.Length - 1 : toAdd.Length).ToArray());
                     i += size;
                 } while(i < msg.Length);
                 return output.ToArray();
@@ -101,19 +95,20 @@ namespace DiffieHellmanClient
         {
             if(users.TryGetValue(client, out var localRemote))
             {
+                if(localRemote.Item2.N.GetByteCount() <= 1)
+                    throw new Exception("Слишком маленькое N.");
                 List<byte> output = new List<byte>(msg.Length);
-                int oldI;
-                int i = 0;
+                Int32 oldI;
+                Int32 i = 0;
                 do
                 {
                     oldI = i;
-                    i += 1;
+                    i += localRemote.Item2.N.GetByteCount() - 1;
                     if(i > msg.Length)
                         i = msg.Length;
                     BigInteger m = new BigInteger(msg.Span.Slice(oldI, i - oldI), isUnsigned: true);
-                    #warning
-                    // if(m > localRemote.Item2.N)
-                    //     throw new Exception($"Message too big! m >= N! ({m} >= {localRemote.Item2.N})");
+                    if(m > localRemote.Item2.N)
+                        throw new Exception($"Message too big! m >= N! ({m} >= {localRemote.Item2.N})");
                     byte[] result = BigInteger.ModPow(m, localRemote.Item2.E, localRemote.Item2.N).ToByteArray();
                     output.AddRange(BitConverter.GetBytes(result.Length));
                     output.AddRange(result);
@@ -135,20 +130,16 @@ namespace DiffieHellmanClient
         {
             Task.Run(() =>
             {
-                PQED insert;
+                PQED insert = default;
                 while(Prepared.Count < 2)
                 {
-                    insert.P = 3;//GenerateRandomPrime(COUNT_BITS, isNeedSleep: true);
-                    insert.Q = 11;//GenerateRandomPrime(COUNT_BITS, isNeedSleep: true);
+                    Parallel.Invoke(
+                        () => insert.P = GenerateRandomPrime(COUNT_BITS, isNeedSleep: true),
+                        () => insert.Q = GenerateRandomPrime(COUNT_BITS, isNeedSleep: true)
+                    );
                     BigInteger ph = (insert.P - 1) * (insert.Q - 1);
                     insert.E = GetE(ph);
                     insert.D = SearchD(insert.E, ph);
-                    BigInteger N = insert.P * insert.Q;
-                    if(BigInteger.ModPow(
-                        BigInteger.ModPow(3, insert.E, N),
-                        insert.D,
-                        N) != 3)
-                        Console.WriteLine();
                     Prepared.Add(insert);
                 }
             }).ConfigureAwait(false);

@@ -4,7 +4,6 @@ using System;
 using System.Linq;
 using Newtonsoft.Json;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Diagnostics;
 
 namespace UnitTestProject1
@@ -12,7 +11,7 @@ namespace UnitTestProject1
     [TestClass]
     public class DiffieHellmanClient
     {
-        private readonly CancellationTokenSource tokenSource = new CancellationTokenSource(TimeSpan.FromHours(30));
+        private readonly CancellationTokenSource tokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(10));
 
         [TestMethod]
         public void Test1()
@@ -28,19 +27,15 @@ namespace UnitTestProject1
             Program2.OnDebugMessage += (a, b) => Console.WriteLine($"{Program2.ToString()}: [{sw.Elapsed}] {b}");
             sw.Start();
             ulong From1To2 = Program1.AddConnection(server2.LocalEndPoint);
-            var toSend = new { Type = "msg", Message = "t" };
-            Program1.Send(From1To2, toSend);
+            var toSend = new { Type = "msg", Message = new string('g', 128) + new string('я', 128) };
             Program2.OnMessageSend += Program2_OnMessageSend;
-            try
-            {
-                //Task.Run(() => { while (!tokenSource.IsCancellationRequested) Thread.Sleep(5); }).Wait(tokenSource.Token);
-            }
-            catch { }
+            Program1.Send(From1To2, toSend);
+            bool good = false;
+            while(!tokenSource.IsCancellationRequested)
+                Thread.Sleep(1);
             sw.Stop();
             Console.WriteLine(sw.Elapsed);
-            Thread.Sleep(200);
-            Program1.Dispose(); Program2.Dispose(); server1.Dispose(); server2.Dispose();
-            Assert.Fail();
+            Assert.IsTrue(good);
             return;
 
             void Program2_OnMessageSend(BusinessLogic arg1, ulong arg2, dynamic arg3)
@@ -49,6 +44,7 @@ namespace UnitTestProject1
                 Assert.AreEqual(1, messages.Length);
                 Console.WriteLine(JsonConvert.SerializeObject(toSend));
                 Assert.AreEqual(JsonConvert.SerializeObject(toSend), JsonConvert.SerializeObject(messages[0].Json));
+                good = true;
                 tokenSource.Cancel();
             }
         }
